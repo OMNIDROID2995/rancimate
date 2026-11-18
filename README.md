@@ -13,7 +13,7 @@
 
 RANCIMATE is a personal fork of [GaggiMate](https://github.com/jniebuhr/gaggimate) by
 jniebuhr and contributors. It is tuned for a Rancilio Silvia whose boiler and brew group
-are wrapped in heavy insulation, and it is **not** an official GaggiMate release: please
+are wrapped in insulation on newer models, and it is **not** an official GaggiMate release: please
 do not ask the GaggiMate project for support with it. Everything GaggiMate does still
 works; the additions are switched off until you enable them.
 
