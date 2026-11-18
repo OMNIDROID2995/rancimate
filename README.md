@@ -145,14 +145,22 @@ Coming from stock GaggiMate, flash both boards once over USB. All files are on t
 esptool.py --chip esp32s3 write_flash \
   0x0     display-bootloader.bin \
   0x8000  display-partitions.bin \
+  0xe000  boot_app0.bin \
   0x10000 display-firmware.bin
 
 # Controller board
 esptool.py --chip esp32s3 write_flash \
   0x0     board-bootloader.bin \
   0x8000  board-partitions.bin \
+  0xe000  boot_app0.bin \
   0x10000 board-firmware.bin
 ```
+
+> [!WARNING]
+> Always include `boot_app0.bin` at `0xe000`. A board that has received OTA updates may
+> boot from its second app slot; without resetting the OTA data the new firmware lands in
+> the inactive slot and the board keeps running the old version (on the controller this
+> shows up as "Version mismatch, update controller").
 
 `display-filesystem.bin` (offset `0xc90000`) contains the seed profiles. Flash it only on
 a fresh install: it **overwrites your saved profiles and shot history**. Settings are kept

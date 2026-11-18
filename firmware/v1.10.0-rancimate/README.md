@@ -3,11 +3,15 @@
 Based on GaggiMate v1.10.0. Same file set as an upstream GaggiMate release: LilyGo T-RGB
 display, headless display and the GaggiMate controller board (all ESP32-S3).
 
+**Always write `boot_app0.bin` at 0xe000 together with the firmware**: after OTA updates a
+board may boot from its second app slot and would otherwise keep running the old version.
+
 **Always flash display and controller together** (protocol version 17); a mismatch
 keeps the heater locked.
 
 | File | Board | Flash offset (manual flashing) |
 |---|---|---|
+| `boot_app0.bin` | All boards: resets the OTA data so the board boots the freshly flashed app | 0xe000 |
 | `display-bootloader.bin` | Display | 0x0 |
 | `display-partitions.bin` | Display | 0x8000 |
 | `display-firmware.bin` | Display (also used by OTA) | 0x10000 |
