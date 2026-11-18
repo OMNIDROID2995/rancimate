@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """
-GaggiMate Aufheiz-Logger.
+GaggiMate heat-up logger.
 
-Verbindet sich mit der WebSocket-Schnittstelle (/ws) des GaggiMate-Displays
-und schreibt jede 'evt:status'-Nachricht (ct = Ist-Temp, tt = Soll-Temp,
-pr = Druck, fl = Fluss) mit Zeitstempel in eine CSV-Datei.
+Connects to the WebSocket interface (/ws) of the GaggiMate display and writes
+every 'evt:status' message (ct = current temperature, tt = target temperature,
+pr = pressure, fl = flow) with a timestamp to a CSV file.
 
-Voraussetzung:
+Requirement:
     pip install websocket-client
 
-Aufruf:
-    python3 heatup_logger.py <GERAETE-IP> [csv-datei]
+Usage:
+    python3 heatup_logger.py <DEVICE-IP> [csv-file]
 
-Beispiel:
+Example:
     python3 heatup_logger.py 192.168.1.50 heatup.csv
 
-Beenden mit Strg+C. Danach die CSV hier im Chat liefern -> ich fitte
-Totzeit/thermische Masse und rechne die finalen Kp/Ki/Kd aus.
+Stop with Ctrl+C. The CSV can then be used to fit dead time and thermal mass
+and to derive Kp/Ki/Kd.
 """
 import csv
 import json
@@ -26,7 +26,7 @@ import time
 try:
     import websocket  # websocket-client
 except ImportError:
-    print("Fehlt: pip install websocket-client")
+    print("Missing: pip install websocket-client")
     sys.exit(1)
 
 
@@ -44,15 +44,15 @@ def main():
         writer = csv.writer(f)
         writer.writerow(["t_sec", "ct", "tt", "pr", "fl"])
         f.flush()
-        print(f"Schreibe nach {out_path}. Beenden mit Strg+C.")
+        print(f"Writing to {out_path}. Stop with Ctrl+C.")
         try:
             while True:  # Reconnect-Schleife: ueberlebt Verbindungsabbrueche
                 try:
-                    print(f"Verbinde mit {url} ...")
+                    print(f"Connecting to {url} ...")
                     ws = websocket.create_connection(url, timeout=10)
-                    print("Verbunden.")
+                    print("Connected.")
                 except Exception as e:
-                    print(f"Verbindung fehlgeschlagen ({e}). Neuer Versuch in 2s ...")
+                    print(f"Connection failed ({e}). Retrying in 2s ...")
                     time.sleep(2)
                     continue
                 try:
@@ -75,9 +75,9 @@ def main():
                         f.flush()
                         print(f"t={t:7.1f}s  ct={ct}  tt={tt}", end="\r", flush=True)
                 except websocket.WebSocketConnectionClosedException:
-                    print("\nVerbindung verloren. Reconnect in 2s ...")
+                    print("\nConnection lost. Reconnecting in 2s ...")
                 except Exception as e:
-                    print(f"\nFehler ({e}). Reconnect in 2s ...")
+                    print(f"\nError ({e}). Reconnecting in 2s ...")
                 finally:
                     try:
                         ws.close()
@@ -85,7 +85,7 @@ def main():
                         pass
                 time.sleep(2)
         except KeyboardInterrupt:
-            print("\nGestoppt.")
+            print("\nStopped.")
 
 
 if __name__ == "__main__":
