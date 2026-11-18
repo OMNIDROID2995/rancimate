@@ -12,6 +12,21 @@ SimplePID::SimplePID(float *controlerOutputPtr, float *sensorOutputPtr, float *s
     this->setpointTarget = setpointTargetPtr;
 }
 
+// Integral contribution incl. authority clamp. When clamping, the integrator
+// state is back-calculated so state and effect stay consistent; clamping only
+// the output would let the state run on invisibly and merely hide the overshoot.
+float SimplePID::clampedIntegralOutput() {
+    float Iout = gainKi * feedback_integralState;
+    if (integralOutputLimits[1] > 0.0f && gainKi != 0.0f) {
+        const float clamped = constrain(Iout, integralOutputLimits[0], integralOutputLimits[1]);
+        if (clamped != Iout) {
+            feedback_integralState = clamped / gainKi;
+            Iout = clamped;
+        }
+    }
+    return Iout;
+}
+
 bool SimplePID::update() {
     if (mode == Control::manual) {
         return false;
@@ -54,10 +69,17 @@ bool SimplePID::update() {
     // Feeback terms
     float error = setpointFiltered - *sensorOutput;
 
-    float Pout = gainKp * error;
+    float Pout = gainKp * proportionalScale * error;
 
-    feedback_integralState += error * deltaTime;
-    float Iout = gainKi * feedback_integralState;
+    // Conditional integration: large POSITIVE errors (far below setpoint, i.e.
+    // heating up) are not integrated. Negative errors always are, so the
+    // integral can discharge. Asymmetric on purpose: |error| <= band would
+    // freeze the integral exactly when it has to discharge.
+    const bool integrateThisStep = !integrationFrozen && ((integralBand <= 0.0f) || (error <= integralBand));
+    if (integrateThisStep) {
+        feedback_integralState += error * deltaTime;
+    }
+    float Iout = clampedIntegralOutput();
 
     float derivative = (error - prevError) / deltaTime;
     float Dout = gainKd * derivative;
@@ -73,10 +95,13 @@ bool SimplePID::update() {
     // Serial.printf("OutputPID: %.2f, Integ out: %.2f\n", sumPIDsat, Iout);
     if (isSaturated && isSameSign) {
         // Serial.printf("Antiwindup clamping: %.2f\n", feedback_integralState);
-        feedback_integralState -=
-            error * deltaTime; // Forbide the integration to happen when the output is saturated and the error is in the same
-                               // direction as the output (i.e. the system is not able to follow the setpoint)
-        Iout = gainKi * feedback_integralState;          // Recompute the integral term with the new state
+        // Forbid the integration to happen when the output is saturated and the error is in the same
+        // direction as the output (i.e. the system is not able to follow the setpoint). Only take back
+        // what was actually added in this step.
+        if (integrateThisStep) {
+            feedback_integralState -= error * deltaTime;
+        }
+        Iout = clampedIntegralOutput();                  // Recompute the integral term with the new state
         sumPID = Pout + Iout + Dout + FFOut + DistFFOut; // Recompute the output with the new integral state
         sumPIDsat = constrain(sumPID, ctrlOutputLimits[0], ctrlOutputLimits[1]);
     }

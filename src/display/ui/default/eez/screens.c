@@ -1275,7 +1275,7 @@ void create_screen_standby_screen() {
             objects.obj3 = obj;
             lv_obj_set_pos(obj, 0, 0);
             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-            lv_img_set_src(obj, &img_logo);
+            lv_img_set_src(obj, &img_standby_logo);
             lv_img_set_zoom(obj, 255);
             lv_obj_set_style_img_recolor(obj, lv_color_hex(theme_colors[eez_flow_get_selected_theme_index()][0]),
                                          LV_PART_MAIN | LV_STATE_DEFAULT);

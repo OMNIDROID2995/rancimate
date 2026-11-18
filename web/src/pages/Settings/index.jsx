@@ -71,6 +71,8 @@ import {
 
 // Device facts GET /api/settings reports for display only; never saved, exported or imported.
 const READ_ONLY_KEYS = [
+  'thermalWatchdogStatus',
+  'thermalWatchdogOwnsParams',
   'deviceIp',
   'setupDone',
   'apMode',

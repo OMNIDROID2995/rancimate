@@ -23,6 +23,8 @@ extern const lv_img_dsc_t img_flowmeter;
 extern const lv_img_dsc_t img_indicator_small;
 extern const lv_img_dsc_t img_indicator_small_inside;
 extern const lv_img_dsc_t img_logo;
+extern const lv_img_dsc_t img_standby_logo;
+extern const lv_img_dsc_t img_cup_rm_screensaver;
 extern const lv_img_dsc_t img_minus_small_40x40;
 extern const lv_img_dsc_t img_mug_hot_alt_80x80;
 extern const lv_img_dsc_t img_pause_40x40;
@@ -62,7 +64,7 @@ typedef struct _ext_img_desc_t {
 } ext_img_desc_t;
 #endif
 
-extern const ext_img_desc_t images[46];
+extern const ext_img_desc_t images[48];
 
 #ifdef __cplusplus
 }

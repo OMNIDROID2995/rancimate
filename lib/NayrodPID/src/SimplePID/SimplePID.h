@@ -49,6 +49,27 @@ class SimplePID {
     void setDisturbanceGain(float gainDFF) { gainDistFF = gainDFF; };
     float getDisturbanceGain() { return gainDistFF; };
 
+    // --- Integral shaping for near-integrating plants (RANCIMATE) ---------
+    // A heavily insulated boiler needs only ~2 % duty to hold temperature.
+    // Without these limits the integral charges to ~40 % during heat-up and
+    // can only discharge by sitting above setpoint for minutes.
+    //
+    // Integrate only while error <= band. Negative errors are ALWAYS
+    // integrated so a charged integral can always discharge. 0 = off.
+    void setIntegralBand(float band) { integralBand = band; }
+    // Clamp on the integral contribution in output units; hi <= 0 = unlimited.
+    // The integrator state is back-calculated so it never runs on invisibly.
+    void setIntegralOutputLimits(float lo, float hi) {
+        integralOutputLimits[0] = lo;
+        integralOutputLimits[1] = hi;
+    }
+    // Freeze the integrator (neither charge nor discharge), e.g. while a brew
+    // disturbance travels through the sensor dead time.
+    void setIntegrationFrozen(bool frozen) { integrationFrozen = frozen; }
+    // Multiplier on the proportional term (1 = unchanged).
+    void setProportionalScale(float scale) { proportionalScale = scale; }
+    float getIntegralOutput() const { return gainKi * feedback_integralState; }
+
   private:
     // setpoint filtering
     void setpointFiltering(float freq);
@@ -77,9 +98,14 @@ class SimplePID {
     float currentDisturbance = 0.0f;             // Current disturbance value
     bool isDisturbanceFeedForwardActive = false; // Flag to activate disturbance feedforward
 
-    float feedback_integralState = 0.0f; // Integral state
-    float prevError = 0.0f;              // Previous error for derivative calculation
-    float prevOutput = 0.0f;             // Previous output for derivative calculation
+    float feedback_integralState = 0.0f;                   // Integral state
+    float integralBand = 0.0f;                             // 0 = always integrate (upstream)
+    float integralOutputLimits[2] = {-INFINITY, INFINITY}; // clamp on Iout
+    bool integrationFrozen = false;
+    float proportionalScale = 1.0f;
+    float clampedIntegralOutput(); // Iout incl. clamp + state back-calculation
+    float prevError = 0.0f;        // Previous error for derivative calculation
+    float prevOutput = 0.0f;       // Previous output for derivative calculation
     Control mode = Control::manual;
     float manualOutput = 0.0f;
     unsigned long lastTime = 0;

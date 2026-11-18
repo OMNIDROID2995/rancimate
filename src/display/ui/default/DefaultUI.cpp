@@ -25,6 +25,7 @@
 #include <display/ui/default/eez/ui.h>
 
 static EffectManager effect_mgr;
+DefaultUI *DefaultUI::sScreensaverInstance = nullptr;
 
 static constexpr uint32_t STARTUP_FADE_MS = 1000; // start screen fade-in duration on power-up
 
@@ -185,6 +186,7 @@ void DefaultUI::reloadProfiles() { profileLoaded = 0; }
 
 DefaultUI::DefaultUI(Controller *controller, Driver *driver, PluginManager *pluginManager)
     : controller(controller), panelDriver(driver), pluginManager(pluginManager) {
+    sScreensaverInstance = this;
     setupPanel();
     xTaskCreatePinnedToCore(loopTask, "DefaultUI::loop", configMINIMAL_STACK_SIZE * 6, this, 1, &taskHandle, 1);
 }
@@ -403,6 +405,10 @@ void DefaultUI::loop() {
                 const unsigned long now = millis();
                 if (now - standbyEnterTime >= settings.getStandbyBrightnessTimeout()) {
                     setBrightness(settings.getStandbyBrightness());
+                }
+                if (!isDeepStandby && settings.getDeepStandbyTimeout() > 0 &&
+                    now - standbyEnterTime >= static_cast<unsigned long>(settings.getDeepStandbyTimeout())) {
+                    enterDeepStandby();
                 }
             }
         }
@@ -686,6 +692,11 @@ void DefaultUI::handleScreenChange() {
     if (lv_disp_get_default()->scr_to_load != nullptr)
         return;
     if (currentScreen != targetScreen) {
+        if (isDeepStandby) {
+            isDeepStandby = false;
+            if (dsContent != nullptr)
+                lv_anim_del(dsContent, nullptr);
+        }
         if (currentScreen == SCREEN_ID_BREW_SCREEN)
             brewConfirmVisible = false; // leaving the brew screen dismisses the confirm overlay
         if (targetScreen == SCREEN_ID_STANDBY_SCREEN) {
@@ -1471,4 +1482,170 @@ void DefaultUI::profileLoopTask(void *arg) {
         ui->loopProfiles();
         vTaskDelay(25 / portTICK_PERIOD_MS);
     }
+}
+
+void DefaultUI::screensaverSetOpa(void *obj, int32_t val) {
+    lv_obj_set_style_opa(static_cast<lv_obj_t *>(obj), static_cast<lv_opa_t>(val), 0);
+}
+
+void DefaultUI::screensaverAnimReady(lv_anim_t * /*a*/) {
+    if (sScreensaverInstance != nullptr && sScreensaverInstance->isDeepStandby)
+        sScreensaverInstance->nextScreensaverFrame();
+}
+
+void DefaultUI::nextScreensaverFrame() {
+    time_t now = time(nullptr);
+    struct tm *timeInfo = localtime(&now);
+    char timeText[6];
+    strftime(timeText, sizeof(timeText), "%H:%M", timeInfo);
+    lv_label_set_text(dsTimeLabel, timeText);
+
+    lv_obj_set_style_opa(dsWifiIcon, (wifiConnected || apActive) ? LV_OPA_COVER : LV_OPA_40, 0);
+    lv_obj_set_style_opa(dsBtIcon, LV_OPA_COVER, 0);
+
+    auto allIn = [](int x, int y, int width, int height) {
+        auto inside = [](int px, int py) {
+            const long dx = px - 240;
+            const long dy = py - 240;
+            return dx * dx + dy * dy <= 228L * 228L;
+        };
+        return inside(x, y) && inside(x + width, y) && inside(x, y + height) && inside(x + width, y + height);
+    };
+    auto overlaps = [](int ax, int ay, int aw, int ah, int bx, int by, int bw, int bh) {
+        constexpr int padding = 14;
+        return ax < bx + bw + padding && ax + aw + padding > bx && ay < by + bh + padding && ay + ah + padding > by;
+    };
+
+    int clockX;
+    int clockY;
+    do {
+        clockX = random(0, 281);
+        clockY = random(0, 140);
+    } while (!allIn(clockX, clockY, 200, 100));
+
+    int tapX;
+    int tapY;
+    do {
+        tapX = random(0, 431);
+        tapY = random(240, 431);
+    } while (!allIn(tapX, tapY, 50, 50));
+
+    int logoX;
+    int logoY;
+    do {
+        logoX = random(0, 295);
+        logoY = random(0, 423);
+    } while (!allIn(logoX, logoY, 186, 58) ||
+             overlaps(logoX, logoY, 186, 58, clockX, clockY, 200, 100) ||
+             overlaps(logoX, logoY, 186, 58, tapX, tapY, 50, 50));
+
+    lv_obj_set_style_align(dsClockGroup, LV_ALIGN_DEFAULT, 0);
+    lv_obj_set_pos(dsClockGroup, clockX, clockY);
+    lv_obj_set_style_align(dsTapIcon, LV_ALIGN_DEFAULT, 0);
+    lv_obj_set_pos(dsTapIcon, tapX, tapY);
+    lv_obj_set_style_align(dsModeIcon, LV_ALIGN_DEFAULT, 0);
+    lv_obj_set_pos(dsModeIcon, logoX, logoY);
+
+    lv_anim_t animation;
+    lv_anim_init(&animation);
+    lv_anim_set_var(&animation, dsContent);
+    lv_anim_set_exec_cb(&animation, &DefaultUI::screensaverSetOpa);
+    lv_anim_set_values(&animation, LV_OPA_TRANSP, LV_OPA_COVER);
+    lv_anim_set_time(&animation, 500);
+    lv_anim_set_playback_delay(&animation, 4000);
+    lv_anim_set_playback_time(&animation, 500);
+    lv_anim_set_ready_cb(&animation, &DefaultUI::screensaverAnimReady);
+    lv_anim_start(&animation);
+}
+
+void DefaultUI::enterDeepStandby() {
+    if (deepStandbyScreen == nullptr) {
+        deepStandbyScreen = lv_obj_create(nullptr);
+        lv_obj_set_size(deepStandbyScreen, 480, 480);
+        lv_obj_set_style_bg_color(deepStandbyScreen, lv_color_black(), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(deepStandbyScreen, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_clear_flag(deepStandbyScreen, LV_OBJ_FLAG_SCROLLABLE);
+
+        dsContent = lv_obj_create(deepStandbyScreen);
+        lv_obj_set_size(dsContent, 480, 480);
+        lv_obj_set_pos(dsContent, 0, 0);
+        lv_obj_set_style_bg_opa(dsContent, LV_OPA_TRANSP, LV_PART_MAIN);
+        lv_obj_set_style_border_width(dsContent, 0, LV_PART_MAIN);
+        lv_obj_set_style_pad_all(dsContent, 0, LV_PART_MAIN);
+        lv_obj_clear_flag(dsContent, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_opa(dsContent, LV_OPA_TRANSP, 0);
+        lv_obj_add_event_cb(
+            dsContent,
+            [](lv_event_t *event) {
+                if (lv_event_get_code(event) == LV_EVENT_CLICKED)
+                    static_cast<DefaultUI *>(lv_event_get_user_data(event))->leaveDeepStandby();
+            },
+            LV_EVENT_CLICKED, this);
+
+        dsModeIcon = lv_img_create(dsContent);
+        lv_img_set_src(dsModeIcon, &img_cup_rm_screensaver);
+        lv_obj_add_flag(dsModeIcon, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        dsClockGroup = lv_obj_create(dsContent);
+        lv_obj_set_size(dsClockGroup, 200, 100);
+        lv_obj_set_style_bg_opa(dsClockGroup, LV_OPA_TRANSP, LV_PART_MAIN);
+        lv_obj_set_style_border_width(dsClockGroup, 0, LV_PART_MAIN);
+        lv_obj_set_style_pad_all(dsClockGroup, 0, LV_PART_MAIN);
+        lv_obj_clear_flag(dsClockGroup, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(dsClockGroup, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        lv_obj_t *iconRow = lv_obj_create(dsClockGroup);
+        lv_obj_set_size(iconRow, 200, LV_SIZE_CONTENT);
+        lv_obj_set_pos(iconRow, 0, 0);
+        lv_obj_set_style_bg_opa(iconRow, LV_OPA_TRANSP, LV_PART_MAIN);
+        lv_obj_set_style_border_width(iconRow, 0, LV_PART_MAIN);
+        lv_obj_set_style_pad_all(iconRow, 0, LV_PART_MAIN);
+        lv_obj_clear_flag(iconRow, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_layout(iconRow, LV_LAYOUT_FLEX, LV_PART_MAIN);
+        lv_obj_set_style_flex_flow(iconRow, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+        lv_obj_set_style_flex_main_place(iconRow, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+        lv_obj_set_style_flex_cross_place(iconRow, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+        lv_obj_set_style_pad_column(iconRow, 30, LV_PART_MAIN);
+        lv_obj_add_flag(iconRow, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        dsWifiIcon = lv_img_create(iconRow);
+        lv_img_set_src(dsWifiIcon, &img_wifi_20x20);
+        lv_obj_set_style_img_recolor(dsWifiIcon, lv_color_white(), LV_PART_MAIN);
+        lv_obj_set_style_img_recolor_opa(dsWifiIcon, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_add_flag(dsWifiIcon, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        dsBtIcon = lv_img_create(iconRow);
+        lv_img_set_src(dsBtIcon, &img_bluetooth_alt_20x20);
+        lv_obj_set_style_img_recolor(dsBtIcon, lv_color_white(), LV_PART_MAIN);
+        lv_obj_set_style_img_recolor_opa(dsBtIcon, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_add_flag(dsBtIcon, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        dsTimeLabel = lv_label_create(dsClockGroup);
+        lv_obj_set_size(dsTimeLabel, 200, LV_SIZE_CONTENT);
+        lv_obj_set_pos(dsTimeLabel, 0, 52);
+        lv_obj_set_style_text_color(dsTimeLabel, lv_color_white(), LV_PART_MAIN);
+        lv_obj_set_style_text_font(dsTimeLabel, &lv_font_montserrat_34, LV_PART_MAIN);
+        lv_obj_set_style_text_align(dsTimeLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_label_set_text(dsTimeLabel, "00:00");
+        lv_obj_add_flag(dsTimeLabel, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        dsTapIcon = lv_img_create(dsContent);
+        lv_img_set_src(dsTapIcon, &img_tap_48x48);
+        lv_obj_set_style_img_recolor(dsTapIcon, lv_color_white(), LV_PART_MAIN);
+        lv_obj_set_style_img_recolor_opa(dsTapIcon, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_add_flag(dsTapIcon, LV_OBJ_FLAG_EVENT_BUBBLE);
+    }
+
+    isDeepStandby = true;
+    nextScreensaverFrame();
+    lv_scr_load_anim(deepStandbyScreen, LV_SCR_LOAD_ANIM_FADE_ON, 500, 0, false);
+}
+
+void DefaultUI::leaveDeepStandby() {
+    isDeepStandby = false;
+    lv_anim_del(dsContent, nullptr);
+    lv_obj_set_style_opa(dsContent, LV_OPA_TRANSP, 0);
+    standbyEnterTime = millis();
+    lv_scr_load_anim(objects.standby_screen, LV_SCR_LOAD_ANIM_FADE_ON, 300, 0, false);
+    setBrightness(controller->getSettings().getStandbyBrightness());
 }

@@ -264,7 +264,23 @@ export function Navigation({ collapsed = false, onToggleCollapsed }) {
                   style='fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;'
                   className='mt-1'
                 >
-                  <g id='Artboard1' transform='matrix(1,0,0,1.01131,0,5.55112e-16)'>
+                  <text
+                    x='0'
+                    y='7.5'
+                    fontSize='8'
+                    fontWeight='200'
+                    letterSpacing='1'
+                    fill='currentColor'
+                    fontFamily='ui-sans-serif,system-ui,sans-serif'
+                  >
+                    <tspan fontWeight='500'>RANCI</tspan>
+                    <tspan>MATE</tspan>
+                  </text>
+                  <g
+                    id='Artboard1'
+                    transform='matrix(1,0,0,1.01131,0,5.55112e-16)'
+                    style='display:none'
+                  >
                     <rect x='0' y='-0' width='70' height='8.227' style='fill:none;' />
                     <clipPath id='_clip1'>
                       <rect x='0' y='-0' width='70' height='8.227' />
@@ -374,7 +390,7 @@ export function Navigation({ collapsed = false, onToggleCollapsed }) {
                   <a
                     aria-label='github'
                     rel='noopener noreferrer'
-                    href='https://github.com/jniebuhr/gaggimate'
+                    href='https://github.com/OMNIDROID2995/rancimate'
                     target='_blank'
                     className='btn btn-sm btn-circle text-base-content hover:text-base-content hover:bg-base-content/10 border-none bg-transparent'
                   >

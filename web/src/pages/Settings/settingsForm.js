@@ -18,6 +18,8 @@ export const CHECKBOX_KEYS = [
   'clock24hFormat',
   'autowakeupEnabled',
   'smartGrindToggle',
+  'thermalAdvancedEnabled',
+  'thermalWatchdogEnabled',
 ];
 
 export function splitPidString(pidString) {

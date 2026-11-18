@@ -116,6 +116,20 @@ message HeaterSettings {
     float steam_kp = 7;
     float steam_ki = 8;
     float steam_kd = 9;
+
+    // RANCIMATE: advanced control for insulated boilers. Ignored unless
+    // thermal_advanced is set; each value <= 0 switches its block off.
+    bool thermal_advanced = 10;
+    float integral_band_c = 11;       // integrate only while error <= this (degC)
+    float integral_max_duty = 12;     // cap on the integral contribution, 0..1
+    float approach_band_c = 13;       // taper the duty cap within this band below setpoint (degC)
+    float approach_max_duty = 14;     // duty cap reached at setpoint, 0..1
+    float incoming_water_temp_c = 15; // feedforward model, <= 0 = controller default (23)
+    float heat_loss_watts = 16;       // <= 0 = controller default (5)
+    float heater_efficiency = 17;     // 0..1, <= 0 = controller default (0.95)
+    float ff_scale = 18;              // multiplier on the disturbance feedforward, <= 0 = 1
+    float brew_holdoff_s = 19;        // freeze integral while brewing and this long after, 0 = off
+    float brew_kp_scale = 20;         // P multiplier while brewing / hold-off, <= 0 = 1
 }
 
 message MachineHardwareSettings {

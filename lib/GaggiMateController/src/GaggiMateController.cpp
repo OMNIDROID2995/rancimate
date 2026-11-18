@@ -341,6 +341,20 @@ void GaggiMateController::setup() {
         }
         heater->setFeedforwardScale(settings.kf);
         heater->setTunings(settings.kp, settings.ki, settings.kd);
+        // RANCIMATE: insulated-boiler shaping applies to the brew boiler only.
+        ThermalShaping shaping;
+        shaping.enabled = settings.thermal_advanced;
+        shaping.integralBandC = settings.integral_band_c;
+        shaping.integralMaxDuty = settings.integral_max_duty;
+        shaping.approachBandC = settings.approach_band_c;
+        shaping.approachMaxDuty = settings.approach_max_duty;
+        shaping.incomingWaterTempC = settings.incoming_water_temp_c;
+        shaping.heatLossWatts = settings.heat_loss_watts;
+        shaping.heaterEfficiency = settings.heater_efficiency;
+        shaping.ffScale = settings.ff_scale;
+        shaping.brewHoldoffS = settings.brew_holdoff_s;
+        shaping.brewKpScale = settings.brew_kp_scale;
+        heater->setThermalShaping(shaping);
         if (heater2 != nullptr) {
             heater2->setTunings(settings.steam_kp, settings.steam_ki, settings.steam_kd);
         }

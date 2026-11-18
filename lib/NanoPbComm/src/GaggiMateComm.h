@@ -65,6 +65,22 @@ struct LedChannelCommand {
     bool operator!=(const LedChannelCommand &o) const { return !(*this == o); }
 };
 
+// RANCIMATE: advanced control for insulated boilers (HeaterSettings fields 10-20).
+// Ignored by the controller unless `enabled`; each value <= 0 switches its block off.
+struct HeaterShapingCommand {
+    bool enabled = false;
+    float integralBandC = 0.0f;
+    float integralMaxDuty = 0.0f;
+    float approachBandC = 0.0f;
+    float approachMaxDuty = 0.0f;
+    float incomingWaterTempC = 0.0f;
+    float heatLossWatts = 0.0f;
+    float heaterEfficiency = 0.0f;
+    float ffScale = 0.0f;
+    float brewHoldoffS = 0.0f;
+    float brewKpScale = 0.0f;
+};
+
 // Error codes; values match gaggimate.ErrorCode and the old string protocol so existing comparisons keep working.
 constexpr int ERROR_CODE_NONE = 0;
 constexpr int ERROR_CODE_COMM_SEND = 1;

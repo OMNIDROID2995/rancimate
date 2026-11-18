@@ -3,8 +3,8 @@ import { appSettings } from './appSettings.js';
 
 // Web bundles are published next to the firmware: stable on the latest release, nightly on the nightly pre-release.
 const MANIFEST_URLS = {
-  stable: 'https://github.com/jniebuhr/gaggimate/releases/latest/download/app-web.json',
-  nightly: 'https://github.com/jniebuhr/gaggimate/releases/download/nightly/app-web.json',
+  stable: 'https://github.com/OMNIDROID2995/rancimate/releases/latest/download/app-web.json',
+  nightly: 'https://github.com/OMNIDROID2995/rancimate/releases/download/nightly/app-web.json',
 };
 const FAILED_KEY = 'gaggimate.failedBundle';
 

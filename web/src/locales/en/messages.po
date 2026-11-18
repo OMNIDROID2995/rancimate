@@ -209,6 +209,10 @@ msgstr "actual flow"
 msgid "Actual Weight of Calibration Object"
 msgstr "Actual Weight of Calibration Object"
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Adapt parameters automatically"
+msgstr "Adapt parameters automatically"
+
 #: src/components/SettingsFormField.jsx
 msgid "Add"
 msgstr "Add"
@@ -283,6 +287,10 @@ msgstr "Advanced hardware settings"
 msgid "After the restart, reconnect to your Wi-Fi network and open Settings → Machine to configure your machine before use."
 msgstr "After the restart, reconnect to your Wi-Fi network and open Settings → Machine to configure your machine before use."
 
+#: src/pages/Settings/tabs/GeneralTab.jsx
+msgid "After this time a screensaver shows moving icons to prevent AMOLED burn-in. Set to 0 to disable."
+msgstr "After this time a screensaver shows moving icons to prevent AMOLED burn-in. Set to 0 to disable."
+
 #: src/pages/SetupWizard/MachineStep.jsx
 msgid "Alba add-on"
 msgstr "Alba add-on"
@@ -335,6 +343,10 @@ msgstr "All nightly changes"
 msgid "All Shots"
 msgstr "All Shots"
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Allowed temperature spread"
+msgstr "Allowed temperature spread"
+
 #: src/pages/Settings/tabs/MachineTab.jsx
 msgid "Alt Relay / SSR2 Function"
 msgstr "Alt Relay / SSR2 Function"
@@ -363,6 +375,10 @@ msgstr "Animation frames are not supported in this environment."
 msgid "Annotations"
 msgstr "Annotations"
 
+#: src/pages/Settings/tabs/GeneralTab.jsx
+msgid "Anti Burn-in Timer (s)"
+msgstr "Anti Burn-in Timer (s)"
+
 #: src/app/AppSettings.jsx
 #: src/components/Navigation.jsx
 msgid "App Settings"
@@ -379,6 +395,10 @@ msgstr "Apply Preset"
 #: src/pages/SetupWizard/MachineStep.jsx
 msgid "Applying and waiting for controller…"
 msgstr "Applying and waiting for controller…"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Approach band"
+msgstr "Approach band"
 
 #: src/pages/ShotAnalyzer/components/library/LibraryPanel.jsx
 msgid "Are you sure you want to delete \"{itemName}\"?"
@@ -436,6 +456,10 @@ msgstr "Autotune Failed"
 #: src/pages/Settings/tabs/CalibrationTab.jsx
 msgid "Autotune in Progress"
 msgstr "Autotune in Progress"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Autotune Watchdog"
+msgstr "Autotune Watchdog"
 
 #: src/pages/SetupWizard/MachineStep.jsx
 msgid "Available"
@@ -662,6 +686,14 @@ msgstr "Brew Button Behavior"
 msgid "Brew Color"
 msgstr "Brew Color"
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Brew feedforward factor"
+msgstr "Brew feedforward factor"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Brew feedforward model"
+msgstr "Brew feedforward model"
+
 #: src/pages/ShotAnalyzer/utils/columns.js
 msgid "Brew Mode"
 msgstr "Brew Mode"
@@ -803,6 +835,10 @@ msgstr "Canvas capture is not supported in this browser."
 msgid "Canvas export is not supported in this environment."
 msgstr "Canvas export is not supported in this environment."
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Cap on the integral share of the heater power. 0 = unlimited."
+msgstr "Cap on the integral share of the heater power. 0 = unlimited."
+
 #: src/pages/SetupWizard/TestStep.jsx
 msgid "Caution: pressurized hot water"
 msgstr "Caution: pressurized hot water"
@@ -911,6 +947,10 @@ msgstr "Coefficients saved to machine: {newCoeffs}"
 msgctxt "theme"
 msgid "Coffee"
 msgstr "Coffee"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Cold water temperature (tank)"
+msgstr "Cold water temperature (tank)"
 
 #: src/components/Navigation.jsx
 msgid "Collapse"
@@ -1066,6 +1106,10 @@ msgstr "Connecting…"
 #: src/pages/DashboardSettings/index.jsx
 msgid "Control Column Style"
 msgstr "Control Column Style"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Control parameters"
+msgstr "Control parameters"
 
 #: src/pages/Settings/tabs/SystemTab.jsx
 msgid "Controller Connection"
@@ -1705,6 +1749,10 @@ msgstr "Empty date expression."
 msgid "Empty value."
 msgstr "Empty value."
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Enable advanced control"
+msgstr "Enable advanced control"
+
 #: src/pages/Settings/PluginCard.jsx
 msgid "Enable Auto Wakeup"
 msgstr "Enable Auto Wakeup"
@@ -1829,6 +1877,10 @@ msgstr "estimated flow"
 msgid "Estimated Output"
 msgstr "Estimated Output"
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Evaluated shots"
+msgstr "Evaluated shots"
+
 #: src/pages/DashboardSettings/index.jsx
 msgid "Even fill"
 msgstr "Even fill"
@@ -1836,6 +1888,10 @@ msgstr "Even fill"
 #: src/pages/Settings/tabs/CleaningSection.jsx
 msgid "Every"
 msgstr "Every"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Every shot is measured one minute before, during and three minutes after the draw, every heat-up is checked for overshoot. While switched on, the firmware adjusts the parameters below in small steps after each shot that leaves the band. Switched off, the values stay as they are and can be edited; shots are still measured."
+msgstr "Every shot is measured one minute before, during and three minutes after the draw, every heat-up is checked for overshoot. While switched on, the firmware adjusts the parameters below in small steps after each shot that leaves the band. Switched off, the values stay as they are and can be edited; shots are still measured."
 
 #: src/pages/Statistics/components/StatisticsSearchHelp.jsx
 msgid "Examples"
@@ -2123,6 +2179,10 @@ msgstr "For 120 V machines, heater coordination should generally remain enabled.
 msgid "For further information on how to use and configure GaggiMate please consult our documentation and guides!"
 msgstr "For further information on how to use and configure GaggiMate please consult our documentation and guides!"
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "For heavily insulated boilers: limits integral wind-up and heat-up power to prevent overshoot, enables the brew feedforward from the heater wattage and holds the integral while a shot passes the sensor delay. Turned off, the controller behaves exactly like stock GaggiMate."
+msgstr "For heavily insulated boilers: limits integral wind-up and heat-up power to prevent overshoot, enables the brew feedforward from the heater wattage and holds the integral while a shot passes the sensor delay. Turned off, the controller behaves exactly like stock GaggiMate."
+
 #: src/pages/Settings/tabs/BluetoothTab.jsx
 msgid "Forget"
 msgstr "Forget"
@@ -2142,6 +2202,10 @@ msgstr "Frag:"
 #: src/pages/Settings/tabs/SystemTab.jsx
 msgid "Free Memory (Heap)"
 msgstr "Free Memory (Heap)"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Freeze the integral during and this long after a shot (≈ sensor delay). 0 = off."
+msgstr "Freeze the integral during and this long after a shot (≈ sensor delay). 0 = off."
 
 #: src/pages/Settings/PluginCard.jsx
 #: src/pages/ShotAnalyzer/components/shotDetails/ShotMainInfoCard.jsx
@@ -2302,6 +2366,14 @@ msgstr "Hardware scales"
 msgid "Headless Version"
 msgstr "Headless Version"
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Heat loss during brew"
+msgstr "Heat loss during brew"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+#~ msgid "Heater and water"
+#~ msgstr "Heater and water"
+
 #: src/pages/Settings/tabs/HeaterCoordinationSection.jsx
 msgid "Heater coordination"
 msgstr "Heater coordination"
@@ -2310,6 +2382,10 @@ msgstr "Heater coordination"
 msgid "Heater Coordination"
 msgstr "Heater Coordination"
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Heater efficiency"
+msgstr "Heater efficiency"
+
 #: src/pages/SetupWizard/TestStep.jsx
 msgid "Heater off, waiting for the temperature to rise…"
 msgstr "Heater off, waiting for the temperature to rise…"
@@ -2317,6 +2393,14 @@ msgstr "Heater off, waiting for the temperature to rise…"
 #: src/utils/metricDefinitions.js
 msgid "Heater Power"
 msgstr "Heater Power"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Heater power cap when reaching the setpoint. Never applied during a shot."
+msgstr "Heater power cap when reaching the setpoint. Never applied during a shot."
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Heater wattage"
+msgstr "Heater wattage"
 
 #: src/pages/Settings/tabs/CalibrationTab.jsx
 msgid "Heater Wattage (W)"
@@ -2507,6 +2591,10 @@ msgstr "Importing shot or profile"
 msgid "Include legend"
 msgstr "Include legend"
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+#~ msgid "Incoming water temperature"
+#~ msgstr "Incoming water temperature"
+
 #: src/pages/ShotHistory/HistoryCard.jsx
 msgid "INCOMPLETE"
 msgstr "INCOMPLETE"
@@ -2520,9 +2608,25 @@ msgctxt "ramp style"
 msgid "Instant"
 msgstr "Instant"
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Integral authority"
+msgstr "Integral authority"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Integral band"
+msgstr "Integral band"
+
 #: src/pages/Settings/tabs/MachineTab.jsx
 msgid "Integral Gain"
 msgstr "Integral Gain"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Integral hold after shot"
+msgstr "Integral hold after shot"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Integrate only within this distance below setpoint. 0 = off."
+msgstr "Integrate only within this distance below setpoint. 0 = off."
 
 #: src/components/PumpFlowCalibration/usePumpFlowCalibration.js
 msgid "Internal error: ApiService unavailable."
@@ -2599,6 +2703,10 @@ msgstr "Larger alpha responds faster with less smoothing; smaller alpha is smoot
 #: src/pages/DashboardSettings/index.jsx
 msgid "Last Row Fill"
 msgstr "Last Row Fill"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Last spread"
+msgstr "Last spread"
 
 #: src/pages/Settings/tabs/GeneralTab.jsx
 msgid "Last used profile"
@@ -2681,6 +2789,10 @@ msgstr "Load Cell 2 Scale Factor"
 #: src/pages/ShotHistory/HistoryCard.jsx
 msgid "Load first"
 msgstr "Load first"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Load recommended values"
+msgstr "Load recommended values"
 
 #: src/pages/ShotHistory/HistoryCard.jsx
 msgid "Load shot data first by expanding the shot"
@@ -2907,6 +3019,10 @@ msgstr "Maximum Flow"
 msgid "Maximum Flow (0 = Ignore)"
 msgstr "Maximum Flow (0 = Ignore)"
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Maximum minus minimum before, during and after a shot."
+msgstr "Maximum minus minimum before, during and after a shot."
+
 #: src/pages/ProfileEdit/ExtendedPhase.jsx
 msgid "Maximum Pressure"
 msgstr "Maximum Pressure"
@@ -3044,6 +3160,10 @@ msgstr "Multi-Compare"
 #: src/pages/DashboardSettings/index.jsx
 msgid "Multiple Cards"
 msgstr "Multiple Cards"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Multiplier on the energy the model adds while water flows."
+msgstr "Multiplier on the energy the model adds while water flows."
 
 #: src/pages/Settings/tabs/MachineTab.jsx
 msgid "Must be larger than the distance to the fill line."
@@ -3446,6 +3566,10 @@ msgstr "Or every"
 msgid "Other network…"
 msgstr "Other network…"
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "P factor during shot"
+msgstr "P factor during shot"
+
 #: src/pages/DashboardSettings/index.jsx
 msgid "Pack to top"
 msgstr "Pack to top"
@@ -3583,6 +3707,10 @@ msgstr "Phases"
 msgid "Physical Buttons"
 msgstr "Physical Buttons"
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "PID advanced for isolated boilers"
+msgstr "PID advanced for isolated boilers"
+
 #: src/pages/Settings/tabs/CalibrationTab.jsx
 msgid "PID Autotune"
 msgstr "PID Autotune"
@@ -3658,6 +3786,10 @@ msgstr "PNG, JPEG, WebP or BMP. GIFs are not supported. The image is cropped to 
 msgctxt "pump mode"
 msgid "Power"
 msgstr "Power"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Power at setpoint"
+msgstr "Power at setpoint"
 
 #: src/pages/Settings/tabs/HeaterCoordinationSection.jsx
 msgid "Power the heaters one at a time instead of in parallel, brew boiler first."
@@ -4148,6 +4280,10 @@ msgstr "Ramp Target"
 msgid "Ramp target selection"
 msgstr "Ramp target selection"
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Rancilio Silvia 230 V: 1100 W. Used for the feedforward when Kff is 0."
+msgstr "Rancilio Silvia 230 V: 1100 W. Used for the feedforward when Kff is 0."
+
 #: src/pages/Statistics/components/MetricsTable.jsx
 msgid "Range"
 msgstr "Range"
@@ -4220,6 +4356,10 @@ msgstr "Recorded Stop Reason"
 #: src/pages/ShotAnalyzer/components/shotChart/constants.js
 msgid "Recording replay..."
 msgstr "Recording replay..."
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Reduce heater power within this distance below setpoint. 0 = off."
+msgstr "Reduce heater power within this distance below setpoint. 0 = off."
 
 #: src/pages/ShotAnalyzer/components/library/LibraryRow.jsx
 msgid "Reference shot"
@@ -4487,6 +4627,10 @@ msgstr "Save current selection as your new 'Standard'?"
 #: src/components/PumpFlowCalibration/usePumpFlowCalibration.js
 msgid "Save failed: {message}"
 msgstr "Save failed: {message}"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Save first: the values become editable once the watchdog is off."
+msgstr "Save first: the values become editable once the watchdog is off."
 
 #: src/app/MachineSetup.jsx
 msgid "Save name"
@@ -5009,6 +5153,7 @@ msgstr "Show the control column panels as separate cards, or group them into a s
 #: src/pages/Settings/PatchNotes.jsx
 msgid "showing the newest {0}"
 msgstr "showing the newest {0}"
+
 #: src/pages/Statistics/components/StatisticsShotCompareSection.jsx
 msgid "Showing up to 100 latest shots. Refine with filters."
 msgstr "Showing up to 100 latest shots. Refine with filters."
@@ -5095,6 +5240,10 @@ msgstr "Smart Grind Plugin"
 msgid "Snapshotting shot history..."
 msgstr "Snapshotting shot history..."
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Softens the reaction to the delayed sensor signal during and after a shot."
+msgstr "Softens the reaction to the delayed sensor signal during and after a shot."
+
 #: src/pages/Statistics/components/statisticsView/helpers.js
 msgid "Some shots have no shot timestamp. Choose how date handling should treat them (Shot = exclude missing, Auto = fallback to upload time, Upload = upload time only)."
 msgstr "Some shots have no shot timestamp. Choose how date handling should treat them (Shot = exclude missing, Auto = fallback to upload time, Upload = upload time only)."
@@ -5126,6 +5275,10 @@ msgstr "Space evenly"
 msgctxt "update channel"
 msgid "Stable"
 msgstr "Stable"
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Stable shots in a row"
+msgstr "Stable shots in a row"
 
 #: src/pages/ShotAnalyzer/components/analysisTable/ColumnControls.jsx
 msgctxt "column preset"
@@ -5471,6 +5624,10 @@ msgctxt "Tuesday, one letter"
 msgid "T"
 msgstr "T"
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+#~ msgid "Tank water temperature. The most sensitive feedforward input."
+#~ msgstr "Tank water temperature. The most sensitive feedforward input."
+
 #: src/pages/SetupWizard/index.jsx
 msgid "Tap a profile to select it."
 msgstr "Tap a profile to select it."
@@ -5640,6 +5797,10 @@ msgstr "Temperature in degrees Celsius"
 msgid "Temperature not stable"
 msgstr "Temperature not stable"
 
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "Temperature of the cold water the pump draws from the tank, not the brew temperature (that comes from the profile). Tells the feedforward how much the incoming water has to be heated."
+msgstr "Temperature of the cold water the pump draws from the tank, not the brew temperature (that comes from the profile). Tells the feedforward how much the incoming water has to be heated."
+
 #: src/pages/Settings/tabs/MachineTab.jsx
 msgid "Temperature Offset (°C)"
 msgstr "Temperature Offset (°C)"
@@ -5713,6 +5874,10 @@ msgstr "The boiler reached brew temperature."
 #: src/pages/Settings/tabs/CalibrationTab.jsx
 msgid "The boiler will heat at full power until its temperature inflection is detected, then the SIMC tuning rule derives PID gains. Typically 1–3 minutes depending on machine."
 msgstr "The boiler will heat at full power until its temperature inflection is detected, then the SIMC tuning rule derives PID gains. Typically 1–3 minutes depending on machine."
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "The brew temperature always comes from the selected profile. These values only describe the machine, so the heater can supply the energy for the incoming cold water as soon as water flows, instead of waiting for the sensor, which reports a shot about 20 s late."
+msgstr "The brew temperature always comes from the selected profile. These values only describe the machine, so the heater can supply the energy for the incoming cold water as soon as water flows, instead of waiting for the sensor, which reports a shot about 20 s late."
 
 #: src/pages/Settings/tabs/GeneralTab.jsx
 msgid "The chart is not shown for utility profiles"
@@ -5817,6 +5982,10 @@ msgstr "The test was stopped before it finished."
 #: src/pages/Settings/tabs/SystemTab.jsx
 msgid "The update could not be completed and the device kept its current firmware. Check the network connection and start the update again."
 msgstr "The update could not be completed and the device kept its current firmware. Check the network connection and start the update again."
+
+#: src/pages/Settings/tabs/ThermalAdvancedSection.jsx
+msgid "The watchdog manages these values. Switch it off to edit them."
+msgstr "The watchdog manages these values. Switch it off to edit them."
 
 #: src/app/AppSettings.jsx
 #: src/pages/Settings/tabs/GeneralTab.jsx

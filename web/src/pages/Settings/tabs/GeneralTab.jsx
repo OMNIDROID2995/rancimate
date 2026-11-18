@@ -341,6 +341,24 @@ export function GeneralTab({
                   onChange={onChange('standbyBrightnessTimeout')}
                 />
               </InputGroupField>
+              <InputGroupField
+                label={t`Anti Burn-in Timer (s)`}
+                htmlFor='deepStandbyTimeout'
+                unit='s'
+                unitAriaLabel={t`seconds`}
+                helpText={t`After this time a screensaver shows moving icons to prevent AMOLED burn-in. Set to 0 to disable.`}
+                noMargin
+              >
+                <input
+                  id='deepStandbyTimeout'
+                  name='deepStandbyTimeout'
+                  type='number'
+                  min='0'
+                  placeholder='300'
+                  value={formData.deepStandbyTimeout}
+                  onChange={onChange('deepStandbyTimeout')}
+                />
+              </InputGroupField>
             </div>
           </div>
         </Section>

@@ -219,6 +219,67 @@ void Settings::setPid(const String &pid) { this->pid.set(pid); }
 
 void Settings::setSteamPid(const String &pid) { steamPid.set(pid); }
 
+namespace {
+float finiteClamp(float value, float lo, float hi, float fallback) {
+    return std::isfinite(value) ? std::clamp(value, lo, hi) : fallback;
+}
+} // namespace
+
+void Settings::setThermalAdvancedEnabled(bool enabled) { thermalAdvanced.set(enabled); }
+
+void Settings::setHeaterWattage(int watts) { heaterWattage.set(std::clamp(watts, 300, 3000)); }
+
+void Settings::setThermalModel(float incomingWaterTemp, float heatLoss, float efficiency) {
+    incomingWaterTempC.set(finiteClamp(incomingWaterTemp, 1.0f, 40.0f, 15.0f));
+    heatLossWatts.set(finiteClamp(heatLoss, 0.0f, 200.0f, 15.0f));
+    heaterEfficiency.set(finiteClamp(efficiency, 0.5f, 1.0f, 0.95f));
+}
+
+thermal::TuneParams Settings::getThermalTuneParams() const {
+    thermal::TuneParams params;
+    params.integralBandC = integralBandC.get();
+    params.integralMaxDuty = integralMaxDuty.get();
+    params.approachBandC = approachBandC.get();
+    params.approachMaxDuty = approachMaxDuty.get();
+    params.ffScale = ffScale.get();
+    params.brewHoldoffS = brewHoldoffS.get();
+    params.brewKpScale = brewKpScale.get();
+    return params;
+}
+
+// Manual edits may switch a block off (0); the watchdog itself stays inside thermal::TuneLimits.
+void Settings::setThermalTuneParams(const thermal::TuneParams &params) {
+    integralBandC.set(finiteClamp(params.integralBandC, 0.0f, 20.0f, 3.0f));
+    integralMaxDuty.set(finiteClamp(params.integralMaxDuty, 0.0f, 1.0f, 0.12f));
+    approachBandC.set(finiteClamp(params.approachBandC, 0.0f, 40.0f, 8.0f));
+    approachMaxDuty.set(finiteClamp(params.approachMaxDuty, 0.05f, 1.0f, 0.35f));
+    ffScale.set(finiteClamp(params.ffScale, 0.3f, 3.0f, 1.0f));
+    brewHoldoffS.set(finiteClamp(params.brewHoldoffS, 0.0f, 120.0f, 22.0f));
+    brewKpScale.set(finiteClamp(params.brewKpScale, 0.05f, 2.0f, 0.5f));
+}
+
+void Settings::setThermalWatchdogEnabled(bool enabled) { thermalWatchdog.set(enabled); }
+
+void Settings::setThermalWatchdogThreshold(float threshold) {
+    thermalWatchdogThreshold.set(finiteClamp(threshold, 0.3f, 10.0f, 2.0f));
+}
+
+void Settings::recordThermalWatchdogResult(bool evaluated, bool passed, float spread, const String &action) {
+    if (evaluated) {
+        thermalWatchdogShots.set(thermalWatchdogShots.get() + 1);
+        thermalWatchdogStableStreak.set(passed ? thermalWatchdogStableStreak.get() + 1 : 0);
+        thermalWatchdogLastSpread.set(spread);
+    }
+    thermalWatchdogLastAction.set(action);
+}
+
+void Settings::resetThermalWatchdogStatus() {
+    thermalWatchdogShots.set(0);
+    thermalWatchdogStableStreak.set(0);
+    thermalWatchdogLastSpread.set(-1.0f);
+    thermalWatchdogLastAction.set("");
+}
+
 void Settings::setHeaterCoordinationEnabled(bool enabled) { heaterCoordinationEnabled.set(enabled); }
 
 void Settings::setHeaterHandoverMs(int handoverMs) {
@@ -366,6 +427,8 @@ void Settings::setStandbyBrightness(int standby_brightness) { standbyBrightness.
 void Settings::setStandbyBrightnessTimeout(int standby_brightness_timeout) {
     standbyBrightnessTimeout.set(standby_brightness_timeout);
 }
+
+void Settings::setDeepStandbyTimeout(int deep_standby_timeout) { deepStandbyTimeout.set(deep_standby_timeout); }
 
 void Settings::setWifiApTimeout(int timeout) { wifiApTimeout.set(timeout); }
 

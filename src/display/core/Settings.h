@@ -11,6 +11,7 @@
 #include <cmath>
 #include <display/core/Property.h>
 #include <display/core/constants.h>
+#include <display/core/thermal/ThermalTuner.h>
 #include <display/core/utils.h>
 #include <esp_err.h>
 #include <mutex>
@@ -232,6 +233,19 @@ class Settings {
     bool setMachineProfileSelection(const String &v);
     String getPid() const { return pid.get(); }
     String getSteamPid() const { return steamPid.get(); }
+    // RANCIMATE: advanced PID for insulated boilers
+    bool isThermalAdvancedEnabled() const { return thermalAdvanced.get(); }
+    int getHeaterWattage() const { return heaterWattage.get(); }
+    float getIncomingWaterTempC() const { return incomingWaterTempC.get(); }
+    float getHeatLossWatts() const { return heatLossWatts.get(); }
+    float getHeaterEfficiency() const { return heaterEfficiency.get(); }
+    thermal::TuneParams getThermalTuneParams() const;
+    bool isThermalWatchdogEnabled() const { return thermalWatchdog.get(); }
+    float getThermalWatchdogThreshold() const { return thermalWatchdogThreshold.get(); }
+    int getThermalWatchdogShots() const { return thermalWatchdogShots.get(); }
+    int getThermalWatchdogStableStreak() const { return thermalWatchdogStableStreak.get(); }
+    float getThermalWatchdogLastSpread() const { return thermalWatchdogLastSpread.get(); }
+    String getThermalWatchdogLastAction() const { return thermalWatchdogLastAction.get(); }
     String getPumpModelCoeffs() const { return pumpModelCoeffs.get(); }
     String getPumpSlipCoeffs() const { return pumpSlipCoeffs.get(); }
     String getWifiSsid() const { return wifiSsid.get(); }
@@ -317,6 +331,7 @@ class Settings {
     int getMainBrightness() const { return mainBrightness.get(); }
     int getStandbyBrightness() const { return standbyBrightness.get(); }
     int getStandbyBrightnessTimeout() const { return standbyBrightnessTimeout.get(); }
+    int getDeepStandbyTimeout() const { return deepStandbyTimeout.get(); }
     int getWarnWaterLevel() const { return warnWaterLevel.get(); }
     int getWarnFlush() const { return warnFlush.get(); }
     int getWarnSteamSwitch() const { return warnSteamSwitch.get(); }
@@ -395,6 +410,14 @@ class Settings {
     void setDelayAdjust(bool delay_adjust);
     void setPid(const String &pid);
     void setSteamPid(const String &pid);
+    void setThermalAdvancedEnabled(bool enabled);
+    void setHeaterWattage(int watts);
+    void setThermalModel(float incomingWaterTempC, float heatLossWatts, float heaterEfficiency);
+    void setThermalTuneParams(const thermal::TuneParams &params);
+    void setThermalWatchdogEnabled(bool enabled);
+    void setThermalWatchdogThreshold(float threshold);
+    void recordThermalWatchdogResult(bool evaluated, bool passed, float spread, const String &action);
+    void resetThermalWatchdogStatus();
     void setHeaterCoordinationEnabled(bool enabled);
     void setHeaterHandoverMs(int handoverMs);
     void setPumpModelCoeffs(const String &pumpModelCoeffs);
@@ -452,6 +475,7 @@ class Settings {
     void setMainBrightness(int main_brightness);
     void setStandbyBrightness(int standby_brightness);
     void setStandbyBrightnessTimeout(int standby_brightness_timeout);
+    void setDeepStandbyTimeout(int deep_standby_timeout);
     void setWifiApTimeout(int timeout);
     void setSteamPumpPercentage(float steam_pump_percentage);
     void setSteamPumpCutoff(float steam_pump_cutoff);
@@ -536,6 +560,25 @@ class Settings {
     Property<int> standbyTimeout{registry, "sbt", DEFAULT_STANDBY_TIMEOUT_MS};
     Property<String> pid{registry, "pid", DEFAULT_PID};
     Property<String> steamPid{registry, "steamPid", ""};
+    // RANCIMATE: advanced PID for insulated boilers (defaults = recommendation for an insulated Silvia)
+    Property<bool> thermalAdvanced{registry, "ta_en", false};
+    Property<int> heaterWattage{registry, "ta_watt", 1100};
+    Property<float> integralBandC{registry, "ta_ib", 3.0f};
+    Property<float> integralMaxDuty{registry, "ta_imd", 0.12f};
+    Property<float> approachBandC{registry, "ta_apb", 8.0f};
+    Property<float> approachMaxDuty{registry, "ta_apd", 0.35f};
+    Property<float> incomingWaterTempC{registry, "ta_iwt", 15.0f};
+    Property<float> heatLossWatts{registry, "ta_hl", 15.0f};
+    Property<float> heaterEfficiency{registry, "ta_eff", 0.95f};
+    Property<float> ffScale{registry, "ta_ffs", 1.0f};
+    Property<float> brewHoldoffS{registry, "ta_bho", 22.0f};
+    Property<float> brewKpScale{registry, "ta_bkp", 0.5f};
+    Property<bool> thermalWatchdog{registry, "ta_wd", false};
+    Property<float> thermalWatchdogThreshold{registry, "ta_wdt", 2.0f};
+    Property<int> thermalWatchdogShots{registry, "ta_wdn", 0};
+    Property<int> thermalWatchdogStableStreak{registry, "ta_wds", 0};
+    Property<float> thermalWatchdogLastSpread{registry, "ta_wdls", -1.0f};
+    Property<String> thermalWatchdogLastAction{registry, "ta_wdla", ""};
     Property<String> wifiSsid{registry, "ws", ""};
     Property<String> wifiPassword{registry, "wp", ""};
     Property<String> wifiApPassword{registry, "wap", ""}; // empty until generated on first start
@@ -594,6 +637,7 @@ class Settings {
     Property<int> mainBrightness{registry, "main_b", 16};
     Property<int> standbyBrightness{registry, "standby_b", 8};
     Property<int> standbyBrightnessTimeout{registry, "standby_bt", 60000}; // 60 seconds default
+    Property<int> deepStandbyTimeout{registry, "deep_sbt", 300000};        // 5 minutes default
     Property<int> wifiApTimeout{registry, "wifi_apt", DEFAULT_WIFI_AP_TIMEOUT_MS};
     Property<int> themeMode{registry, "theme", 0};
     Property<int> statusDisplayMode{registry, "sdm", STATUS_DISPLAY_PROGRESS};

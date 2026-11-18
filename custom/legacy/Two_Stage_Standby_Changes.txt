@@ -1,0 +1,446 @@
+================================================================================
+  TWO STAGE STANDBY SCREEN — ALL CODE CHANGES (RANCIMATE / GaggiMate)
+  Date: 2026-06-25
+================================================================================
+
+OVERVIEW
+--------
+The "Two Stage Standby Screen" is an anti burn-in screensaver for the
+AMOLED display (Waveshare ESP32-S3-Touch-AMOLED-1.75, CO5300, 466x466px).
+
+Stage 1 = normal standby screen (unchanged, original GaggiMate)
+Stage 2 = Deep Standby / Screensaver (NEW) — activates after a configurable timeout
+
+Effect: Black background. All icons/labels move to a random position within
+the circular display on every frame.
+Elements: Time + WiFi/BT icons (upper half), tap icon (lower half), cup+RM logo (anywhere)
+Fade sequence: 500ms fade in | 4000ms visible | 500ms fade out → repeat
+Exit: Tap the display → returns to the normal standby screen
+
+
+================================================================================
+FILE 1: DefaultUI.h
+Path: src/display/ui/default/DefaultUI.h
+================================================================================
+
+ADDED — private member variables (after existing screen state fields):
+
+    // Deep standby screensaver (anti burn-in)
+    lv_obj_t    *deepStandbyScreen = nullptr;
+    lv_obj_t    *dsContent         = nullptr;
+    lv_obj_t    *dsModeIcon        = nullptr;  // cup+RM icon (186x58px)
+    lv_obj_t    *dsClockGroup      = nullptr;  // 200x100 container
+    lv_obj_t    *dsTimeLabel       = nullptr;
+    lv_obj_t    *dsWifiIcon        = nullptr;
+    lv_obj_t    *dsBtIcon          = nullptr;
+    lv_obj_t    *dsTapIcon         = nullptr;
+    bool         isDeepStandby     = false;
+    static DefaultUI *sScreensaverInstance;
+
+ADDED — private methods:
+
+    void        enterDeepStandby();
+    void        leaveDeepStandby();
+    void        nextScreensaverFrame();
+    static void screensaverAnimReady(lv_anim_t *a);
+    static void screensaverSetOpa(void *obj, int32_t val);
+
+
+================================================================================
+FILE 2: DefaultUI.cpp
+Path: src/display/ui/default/DefaultUI.cpp
+================================================================================
+
+--- CHANGE A: Standby loop trigger (inside DefaultUI::loop()) ---
+
+In the block "if (currentScreen == SCREEN_ID_STANDBY_SCREEN)", added after
+the existing brightness timeout check:
+
+    if (!isDeepStandby && settings.getDeepStandbyTimeout() > 0
+        && now - standbyEnterTime >= (unsigned long)settings.getDeepStandbyTimeout()) {
+        enterDeepStandby();
+    }
+
+
+--- CHANGE B: handleScreenChange() — deep standby cleanup ---
+
+In the block "if (currentScreen != targetScreen)", added:
+
+    if (isDeepStandby) {
+        isDeepStandby = false;
+        if (dsContent) lv_anim_del(dsContent, nullptr);
+    }
+
+
+--- CHANGE C: Static instance variable ---
+
+At global scope in the .cpp (after includes):
+
+    DefaultUI *DefaultUI::sScreensaverInstance = nullptr;
+
+In the constructor or init():
+
+    sScreensaverInstance = this;
+
+
+--- CHANGE D: New methods added at the end of the file ---
+
+// -----------------------------------------------------------------------
+// METHOD 1: screensaverSetOpa — LVGL animation exec callback
+// -----------------------------------------------------------------------
+void DefaultUI::screensaverSetOpa(void *obj, int32_t val) {
+    lv_obj_set_style_opa(static_cast<lv_obj_t *>(obj), static_cast<lv_opa_t>(val), 0);
+}
+
+// -----------------------------------------------------------------------
+// METHOD 2: screensaverAnimReady — called when fade-out completes
+// -----------------------------------------------------------------------
+void DefaultUI::screensaverAnimReady(lv_anim_t * /*a*/) {
+    if (sScreensaverInstance && sScreensaverInstance->isDeepStandby)
+        sScreensaverInstance->nextScreensaverFrame();
+}
+
+// -----------------------------------------------------------------------
+// METHOD 3: nextScreensaverFrame — render next screensaver frame
+// -----------------------------------------------------------------------
+void DefaultUI::nextScreensaverFrame() {
+    // 1. Update clock text
+    {
+        time_t now = time(nullptr);
+        struct tm *ti = localtime(&now);
+        char buf[6];
+        strftime(buf, sizeof(buf), "%H:%M", ti);
+        lv_label_set_text(dsTimeLabel, buf);
+    }
+
+    // 2. WiFi / BT icon visibility
+    lv_obj_set_style_opa(dsWifiIcon, (wifiConnected || apActive) ? LV_OPA_COVER : LV_OPA_40, 0);
+    lv_obj_set_style_opa(dsBtIcon, LV_OPA_COVER, 0);
+
+    // 3. Position helpers
+    //    Circle: radius 228 (= 233 - 5px safety margin), centre (240,240)
+    auto allIn = [](int x, int y, int w, int h) {
+        auto ok = [](int px, int py) {
+            long dx = px - 240, dy = py - 240;
+            return dx * dx + dy * dy <= 228L * 228L;
+        };
+        return ok(x, y) && ok(x + w, y) && ok(x, y + h) && ok(x + w, y + h);
+    };
+    auto overlaps = [](int ax, int ay, int aw, int ah,
+                       int bx, int by, int bw, int bh) {
+        const int P = 14; // padding between elements
+        return ax < bx + bw + P && ax + aw + P > bx &&
+               ay < by + bh + P && ay + ah + P > by;
+    };
+
+    // Clock group (200x100) — upper half
+    int cgX, cgY;
+    do { cgX = random(0, 281); cgY = random(0, 140); }
+    while (!allIn(cgX, cgY, 200, 100));
+
+    // Tap icon (effective 50x50 at zoom=210) — lower half (y 240..430)
+    int tiX, tiY;
+    do { tiX = random(0, 431); tiY = random(240, 431); }
+    while (!allIn(tiX, tiY, 50, 50));
+
+    // Mode icon (186x58) — anywhere, no overlap with clock or tap
+    int miX, miY;
+    do {
+        miX = random(0, 295); miY = random(0, 423);
+    } while (!allIn(miX, miY, 186, 58) ||
+             overlaps(miX, miY, 186, 58, cgX, cgY, 200, 100) ||
+             overlaps(miX, miY, 186, 58, tiX, tiY,  50,   50));
+
+    lv_obj_set_style_align(dsClockGroup, LV_ALIGN_DEFAULT, 0);
+    lv_obj_set_pos(dsClockGroup, cgX, cgY);
+    lv_obj_set_style_align(dsTapIcon, LV_ALIGN_DEFAULT, 0);
+    lv_obj_set_pos(dsTapIcon, tiX, tiY);
+    lv_obj_set_style_align(dsModeIcon, LV_ALIGN_DEFAULT, 0);
+    lv_obj_set_pos(dsModeIcon, miX, miY);
+
+    // 4. Fade animation: in(500ms) | hold(4000ms) | out(500ms)
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, dsContent);
+    lv_anim_set_exec_cb(&a, &DefaultUI::screensaverSetOpa);
+    lv_anim_set_values(&a, LV_OPA_TRANSP, LV_OPA_COVER);
+    lv_anim_set_time(&a, 500);
+    lv_anim_set_playback_delay(&a, 4000);
+    lv_anim_set_playback_time(&a, 500);
+    lv_anim_set_ready_cb(&a, &DefaultUI::screensaverAnimReady);
+    lv_anim_start(&a);
+}
+
+// -----------------------------------------------------------------------
+// METHOD 4: enterDeepStandby — start the screensaver
+// -----------------------------------------------------------------------
+void DefaultUI::enterDeepStandby() {
+    if (!deepStandbyScreen) {
+        // Root screen — black background
+        deepStandbyScreen = lv_obj_create(nullptr);
+        lv_obj_set_size(deepStandbyScreen, 480, 480);
+        lv_obj_set_style_bg_color(deepStandbyScreen, lv_color_black(), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(deepStandbyScreen, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_clear_flag(deepStandbyScreen, LV_OBJ_FLAG_SCROLLABLE);
+
+        // Transparent content container — fade target + touch handler
+        dsContent = lv_obj_create(deepStandbyScreen);
+        lv_obj_set_size(dsContent, 480, 480);
+        lv_obj_set_pos(dsContent, 0, 0);
+        lv_obj_set_style_bg_opa(dsContent, LV_OPA_TRANSP, LV_PART_MAIN);
+        lv_obj_set_style_border_width(dsContent, 0, LV_PART_MAIN);
+        lv_obj_set_style_pad_all(dsContent, 0, LV_PART_MAIN);
+        lv_obj_clear_flag(dsContent, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_opa(dsContent, LV_OPA_TRANSP, 0);
+        // Touch handler: tap anywhere → leaveDeepStandby()
+        lv_obj_add_event_cb(
+            dsContent,
+            [](lv_event_t *e) {
+                if (lv_event_get_code(e) == LV_EVENT_CLICKED)
+                    static_cast<DefaultUI *>(lv_event_get_user_data(e))->leaveDeepStandby();
+            },
+            LV_EVENT_CLICKED, this);
+
+        // Cup+RM brand mark (186x58px, colors baked into PNG)
+        dsModeIcon = lv_img_create(dsContent);
+        lv_obj_set_size(dsModeIcon, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+        lv_img_set_zoom(dsModeIcon, 256);
+        lv_img_set_src(dsModeIcon, &img_cup_rm_screensaver);
+        // NO recolor! Colors are baked into the pixel data (tricolor cup + white RM)
+        lv_obj_add_flag(dsModeIcon, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        // Clock group — 200x100px container
+        dsClockGroup = lv_obj_create(dsContent);
+        lv_obj_set_size(dsClockGroup, 200, 100);
+        lv_obj_set_style_bg_opa(dsClockGroup, LV_OPA_TRANSP, LV_PART_MAIN);
+        lv_obj_set_style_border_width(dsClockGroup, 0, LV_PART_MAIN);
+        lv_obj_set_style_pad_all(dsClockGroup, 0, LV_PART_MAIN);
+        lv_obj_clear_flag(dsClockGroup, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(dsClockGroup, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        // Icon row — 200px wide, flex row CENTER, 30px gap
+        lv_obj_t *dsIconRow = lv_obj_create(dsClockGroup);
+        lv_obj_set_size(dsIconRow, 200, LV_SIZE_CONTENT);
+        lv_obj_set_pos(dsIconRow, 0, 0);
+        lv_obj_set_style_bg_opa(dsIconRow, LV_OPA_TRANSP, LV_PART_MAIN);
+        lv_obj_set_style_border_width(dsIconRow, 0, LV_PART_MAIN);
+        lv_obj_set_style_pad_all(dsIconRow, 0, LV_PART_MAIN);
+        lv_obj_clear_flag(dsIconRow, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_layout(dsIconRow, LV_LAYOUT_FLEX, LV_PART_MAIN);
+        lv_obj_set_style_flex_flow(dsIconRow, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+        lv_obj_set_style_flex_main_place(dsIconRow, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+        lv_obj_set_style_flex_cross_place(dsIconRow, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+        lv_obj_set_style_pad_column(dsIconRow, 30, LV_PART_MAIN);
+        lv_obj_add_flag(dsIconRow, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        dsWifiIcon = lv_img_create(dsIconRow);
+        lv_obj_set_size(dsWifiIcon, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+        lv_img_set_src(dsWifiIcon, &img_wifi_20x20);
+        lv_obj_set_style_img_recolor(dsWifiIcon, lv_color_white(), LV_PART_MAIN);
+        lv_obj_set_style_img_recolor_opa(dsWifiIcon, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_add_flag(dsWifiIcon, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        dsBtIcon = lv_img_create(dsIconRow);
+        lv_obj_set_size(dsBtIcon, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+        lv_img_set_src(dsBtIcon, &img_bluetooth_alt_20x20);
+        lv_obj_set_style_img_recolor(dsBtIcon, lv_color_white(), LV_PART_MAIN);
+        lv_obj_set_style_img_recolor_opa(dsBtIcon, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_add_flag(dsBtIcon, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        // Time label — 200px wide, centred, y=52 (below icon row)
+        dsTimeLabel = lv_label_create(dsClockGroup);
+        lv_obj_set_size(dsTimeLabel, 200, LV_SIZE_CONTENT);
+        lv_obj_set_pos(dsTimeLabel, 0, 52);
+        lv_obj_set_style_text_color(dsTimeLabel, lv_color_white(), LV_PART_MAIN);
+        lv_obj_set_style_text_font(dsTimeLabel, &lv_font_montserrat_34, LV_PART_MAIN);
+        lv_obj_set_style_text_align(dsTimeLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_label_set_text(dsTimeLabel, "00:00");
+        lv_obj_add_flag(dsTimeLabel, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        // Tap-to-wake icon — lower half
+        dsTapIcon = lv_img_create(dsContent);
+        lv_img_set_src(dsTapIcon, &img_tap_60x60);
+        lv_img_set_zoom(dsTapIcon, 210);
+        lv_obj_set_style_img_recolor(dsTapIcon, lv_color_white(), LV_PART_MAIN);
+        lv_obj_set_style_img_recolor_opa(dsTapIcon, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_add_flag(dsTapIcon, LV_OBJ_FLAG_EVENT_BUBBLE);
+    }
+    isDeepStandby = true;
+    nextScreensaverFrame();
+    lv_scr_load_anim(deepStandbyScreen, LV_SCR_LOAD_ANIM_FADE_ON, 500, 0, false);
+}
+
+// -----------------------------------------------------------------------
+// METHOD 5: leaveDeepStandby — exit screensaver, return to standby screen
+// -----------------------------------------------------------------------
+void DefaultUI::leaveDeepStandby() {
+    isDeepStandby = false;
+    lv_anim_del(dsContent, nullptr);
+    lv_obj_set_style_opa(dsContent, LV_OPA_TRANSP, 0);
+    standbyEnterTime = millis();
+    lv_scr_load_anim(objects.standby_screen, LV_SCR_LOAD_ANIM_FADE_ON, 300, 0, false);
+    setBrightness(controller->getSettings().getStandbyBrightness());
+}
+
+
+================================================================================
+FILE 3: Settings.h
+Path: src/display/core/Settings.h
+================================================================================
+
+ADDED — public getter + setter:
+
+    int getDeepStandbyTimeout() const { return deepStandbyTimeout; }
+    void setDeepStandbyTimeout(int deep_standby_timeout);
+
+ADDED — private member variable:
+
+    int deepStandbyTimeout = 300000;    // default: 5 minutes (in ms)
+
+
+================================================================================
+FILE 4: Settings.cpp
+Path: src/display/core/Settings.cpp
+================================================================================
+
+ADDED in load() — read NVS value:
+
+    deepStandbyTimeout = preferences.getInt("deep_sbt", 300000);
+
+ADDED in save() — write NVS value:
+
+    preferences.putInt("deep_sbt", deepStandbyTimeout);
+
+ADDED setter implementation:
+
+    void Settings::setDeepStandbyTimeout(int deep_standby_timeout) {
+        deepStandbyTimeout = deep_standby_timeout;
+    }
+
+
+================================================================================
+FILE 5: WebUIPlugin.cpp
+Path: src/display/plugins/WebUIPlugin.cpp
+================================================================================
+
+ADDED in the POST handler for /settings — receive value:
+
+    if (request->hasArg("deepStandbyTimeout"))
+        settings->setDeepStandbyTimeout(request->arg("deepStandbyTimeout").toInt() * 1000);
+    // Note: Web UI sends seconds → *1000 to convert to milliseconds
+
+ADDED in the GET handler for /settings — return value:
+
+    doc["deepStandbyTimeout"] = settings.getDeepStandbyTimeout() / 1000;
+    // Note: /1000 because the Web UI expects seconds
+
+
+================================================================================
+FILE 6: web/src/pages/Settings/index.jsx
+Path: web/src/pages/Settings/index.jsx
+================================================================================
+
+ADDED — input field in the settings form:
+
+    <FormControl
+      label='Anti Burn-in Timer (s)'
+      htmlFor='deepStandbyTimeout'
+      helpText='After this time a screensaver shows moving icons to prevent AMOLED burn-in. Set to 0 to disable.'
+    >
+      <input
+        id='deepStandbyTimeout'
+        name='deepStandbyTimeout'
+        type='number'
+        value={formData.deepStandbyTimeout}
+        onChange={onChange('deepStandbyTimeout')}
+      />
+    </FormControl>
+
+
+================================================================================
+FILE 7: eez/images.h
+Path: src/display/ui/default/eez/images.h
+================================================================================
+
+ADDED — declarations:
+
+    extern const lv_img_dsc_t img_rm_screensaver;
+    extern const lv_img_dsc_t img_cup_rm_screensaver;
+    extern const ext_img_desc_t images[38];   // array size increased to 38
+
+
+================================================================================
+FILE 8: eez/images.c
+Path: src/display/ui/default/eez/images.c
+================================================================================
+
+ADDED — entries in the images[] array (size increased to 38):
+
+    {"rm-screensaver",     &img_rm_screensaver},
+    {"cup-rm-screensaver", &img_cup_rm_screensaver},
+
+
+================================================================================
+FILE 9: eez/images/ui_image_cup_rm_screensaver.c  (NEW FILE)
+Path: src/display/ui/default/eez/images/ui_image_cup_rm_screensaver.c
+================================================================================
+
+NEW file — LVGL C array for the cup+RM icon.
+
+Properties:
+  - Size: 186 x 58 pixels
+  - Format: LV_IMG_CF_TRUE_COLOR_ALPHA (3 bytes/pixel: RGB565_lo, RGB565_hi, Alpha)
+  - LV_COLOR_DEPTH=16, LV_COLOR_16_SWAP=0
+
+Contents:
+  - Left side (68px): coffee cup with Italian flag colors baked in
+      Green: #119246  |  White: #FFFFFF  |  Red: #CE2C38
+  - Right side (118px): "RM" letters in WHITE baked in
+      (letters cropped from logo.png — R+M from "RANCIMATE")
+
+IMPORTANT: Do NOT use LVGL recolor on this image! Colors are in the pixel data.
+  The file is generated via a Python script using cairosvg + Pillow.
+
+Generation script (summary):
+  1. Render cup.svg at 58px height → PIL Image (green/white/red)
+  2. Crop R+M letters from logo.png, convert to white using to_white()
+  3. Combine both → 186x58px RGBA image
+  4. Write LVGL C array with all 4 color depth sections
+
+
+================================================================================
+KNOWN ISSUES & FIXES (for future reference)
+================================================================================
+
+ISSUE: Tap does nothing (screen does not respond to touch)
+FIX:   Place the click handler on dsContent (480x480), not on deepStandbyScreen.
+       All child objects must have LV_OBJ_FLAG_EVENT_BUBBLE set.
+
+ISSUE: Icons are clipped (bottom half cut off)
+FIX:   Do not use border_width tricks on lv_img. Use pad_column on the flex
+       container instead to control spacing.
+
+ISSUE: Cup appears completely white instead of tricolor
+FIX:   lv_obj_set_style_img_recolor_opa(..., LV_OPA_COVER) overrides ALL pixel
+       colors → remove it. Colors must be baked directly into the PNG/C array.
+
+ISSUE: Board not detected at /dev/ttyACM0
+FIX:   Run "ls /dev/ttyACM*" first. Replug the USB-C cable if needed.
+       It may appear as /dev/ttyACM1 when JTAG is also active.
+
+
+================================================================================
+BUILD COMMAND
+================================================================================
+
+Build and flash the display firmware only:
+
+    cd ~/Dokumente/Headless\ Gaggimate/gaggimate-src
+    pio run -e display
+    pio run -e display --target upload
+
+Environment: display  (NOT display-headless)
+Port:        /dev/ttyACM0  (or ttyACM1)
+
+
+================================================================================

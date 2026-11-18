@@ -140,7 +140,8 @@ if [[ $SKIP_BUILD -eq 0 ]]; then
     rm -rf "$OUT"
     mkdir -p "$OUT"
     # Same derivation as auto_firmware_version.py: only v* tags count, so this release tag never shows up in the version.
-    VERSION="$(git describe --tags --dirty --match 'v*')"
+    # RANCIMATE: upstream base tag + suffix, identical to scripts/auto_firmware_version.py.
+    VERSION="$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude '*-rancimate*')-rancimate"
     echo "$VERSION" >"$OUT/version.txt"
     echo "==> Firmware version: $VERSION"
 

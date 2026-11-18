@@ -253,10 +253,28 @@ class DefaultUI {
     // Standby brightness control
     unsigned long standbyEnterTime = 0;
 
+    // Deep standby screensaver (anti burn-in)
+    lv_obj_t *deepStandbyScreen = nullptr;
+    lv_obj_t *dsContent = nullptr;
+    lv_obj_t *dsModeIcon = nullptr;
+    lv_obj_t *dsClockGroup = nullptr;
+    lv_obj_t *dsTimeLabel = nullptr;
+    lv_obj_t *dsWifiIcon = nullptr;
+    lv_obj_t *dsBtIcon = nullptr;
+    lv_obj_t *dsTapIcon = nullptr;
+    bool isDeepStandby = false;
+    static DefaultUI *sScreensaverInstance;
+
     xTaskHandle taskHandle;
     static void loopTask(void *arg);
     xTaskHandle profileTaskHandle;
     static void profileLoopTask(void *arg);
+
+    void enterDeepStandby();
+    void leaveDeepStandby();
+    void nextScreensaverFrame();
+    static void screensaverAnimReady(lv_anim_t *a);
+    static void screensaverSetOpa(void *obj, int32_t val);
 };
 
 #endif // DEFAULTUI_H

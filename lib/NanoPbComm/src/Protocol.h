@@ -24,8 +24,9 @@ static constexpr const char *LEGACY_ERROR_CHAR_UUID = "d6676ec7-820c-41de-820d-9
 // Protocol 16 gives hardware-scale tare its own command; Tare resets pump volume only.
 // LED functions are display-side; hardware configuration version 7 removes them.
 // LED instructions include animation minimum brightness and cycle time.
+// Protocol 17 (RANCIMATE) adds advanced thermal shaping for insulated boilers to HeaterSettings.
 // Update controller and display together.
-static constexpr uint32_t PROTOCOL_VERSION = 16;
+static constexpr uint32_t PROTOCOL_VERSION = 17;
 
 // Outbound priorities (higher wins in the queue).
 enum Priority : uint8_t {

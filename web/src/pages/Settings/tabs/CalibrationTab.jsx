@@ -17,7 +17,12 @@ export function CalibrationTab({ formData, setField }) {
   const [autotuneFailed, setAutotuneFailed] = useState(false);
   const [autotuneTime, setAutotuneTime] = useState(120);
   const [autotuneSamples, setAutotuneSamples] = useState(6);
-  const [autotuneWattage, setAutotuneWattage] = useState(1360);
+  // RANCIMATE: start from the persisted heater wattage instead of the Gaggia default.
+  const [autotuneWattage, setAutotuneWattage] = useState(Number(formData?.heaterWattage) || 1360);
+  useEffect(() => {
+    const stored = Number(formData?.heaterWattage);
+    if (stored > 0) setAutotuneWattage(stored);
+  }, [formData?.heaterWattage]);
 
   const onStartAutotune = useCallback(() => {
     apiService.send({

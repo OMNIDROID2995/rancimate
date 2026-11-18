@@ -333,6 +333,52 @@ static bool parseBoolArg(const String &value) {
     return !(value.isEmpty() || value == "0" || value.equalsIgnoreCase("false") || value.equalsIgnoreCase("off"));
 }
 
+// RANCIMATE: "PID advanced for isolated boilers". Duty values travel as percent.
+static void applyThermalAdvancedArgs(AsyncWebServerRequest *request, Settings *settings, bool watchdogOwnsParams) {
+    auto hasFloat = [request](const char *key, float &out) {
+        if (!request->hasArg(key))
+            return false;
+        out = request->arg(key).toFloat();
+        return true;
+    };
+    if (request->hasArg("thermalAdvancedEnabled"))
+        settings->setThermalAdvancedEnabled(parseBoolArg(request->arg("thermalAdvancedEnabled")));
+    if (request->hasArg("thermalWatchdogEnabled")) {
+        const bool enable = parseBoolArg(request->arg("thermalWatchdogEnabled"));
+        if (enable && !settings->isThermalWatchdogEnabled())
+            settings->resetThermalWatchdogStatus(); // a new tuning run starts from a clean status
+        settings->setThermalWatchdogEnabled(enable);
+    }
+    float value = 0.0f;
+    if (hasFloat("thermalWatchdogThreshold", value))
+        settings->setThermalWatchdogThreshold(value);
+    if (request->hasArg("heaterWattage"))
+        settings->setHeaterWattage(request->arg("heaterWattage").toInt());
+    float inlet = settings->getIncomingWaterTempC(), loss = settings->getHeatLossWatts(), eff = settings->getHeaterEfficiency();
+    const bool modelChanged =
+        hasFloat("incomingWaterTempC", inlet) | hasFloat("heatLossWatts", loss) | hasFloat("heaterEfficiency", eff);
+    if (modelChanged)
+        settings->setThermalModel(inlet, loss, eff);
+    if (watchdogOwnsParams)
+        return;
+    thermal::TuneParams params = settings->getThermalTuneParams();
+    bool tuneChanged = hasFloat("integralBandC", params.integralBandC);
+    if (hasFloat("integralMaxDutyPercent", value)) {
+        params.integralMaxDuty = value / 100.0f;
+        tuneChanged = true;
+    }
+    tuneChanged |= hasFloat("approachBandC", params.approachBandC);
+    if (hasFloat("approachMaxDutyPercent", value)) {
+        params.approachMaxDuty = value / 100.0f;
+        tuneChanged = true;
+    }
+    tuneChanged |= hasFloat("ffScale", params.ffScale);
+    tuneChanged |= hasFloat("brewHoldoffS", params.brewHoldoffS);
+    tuneChanged |= hasFloat("brewKpScale", params.brewKpScale);
+    if (tuneChanged)
+        settings->setThermalTuneParams(params);
+}
+
 void WebUIPlugin::handleMachineProfiles(AsyncWebServerRequest *request) {
     if (controller->isUpdating()) {
         request->send(503, "application/json", "{\"error\":\"Update in progress\"}");
@@ -432,7 +478,11 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
         if (profileChanged || hardwareRequest || refillRequest)
             controller->activateStandby();
         bool saved = false;
-        controller->getSettings().batchUpdate([request, &saved, &profileError](Settings *settings) {
+        // RANCIMATE: while the watchdog owns the tuning parameters, the form still posts the values
+        // it loaded earlier; accepting them would silently undo the watchdog's adjustments.
+        const bool thermalWatchdogOwnsParams =
+            controller->getSettings().isThermalAdvancedEnabled() && controller->getSettings().isThermalWatchdogEnabled();
+        controller->getSettings().batchUpdate([request, &saved, &profileError, thermalWatchdogOwnsParams](Settings *settings) {
             if (request->hasArg("machineProfileSelection") &&
                 !settings->setMachineProfileSelection(request->arg("machineProfileSelection"))) {
                 profileError = "Could not create machine profile reference; previous selection retained";
@@ -530,6 +580,7 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
                 settings->setSteamPid(request->arg("steamPid"));
             if (request->hasArg("pid"))
                 settings->setPid(request->arg("pid"));
+            applyThermalAdvancedArgs(request, settings, thermalWatchdogOwnsParams);
             if (request->hasArg("pumpModelCoeffs"))
                 settings->setPumpModelCoeffs(request->arg("pumpModelCoeffs"));
             if (request->hasArg("pumpSlipCoeffs"))
@@ -638,6 +689,8 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
                 settings->setStandbyBrightness(request->arg("standbyBrightness").toInt());
             if (request->hasArg("standbyBrightnessTimeout"))
                 settings->setStandbyBrightnessTimeout(request->arg("standbyBrightnessTimeout").toInt() * 1000);
+            if (request->hasArg("deepStandbyTimeout"))
+                settings->setDeepStandbyTimeout(request->arg("deepStandbyTimeout").toInt() * 1000);
             if (request->hasArg("steamPumpPercentage"))
                 settings->setSteamPumpPercentage(request->arg("steamPumpPercentage").toFloat());
             if (request->hasArg("steamPumpCutoff"))
@@ -787,6 +840,30 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
     doc["heaterHandoverMs"] = settings.getHeaterHandoverMs();
     doc["pid"] = settings.getPid();
     doc["steamPid"] = settings.getSteamPid();
+    {
+        // RANCIMATE: advanced PID for insulated boilers
+        const thermal::TuneParams tune = settings.getThermalTuneParams();
+        doc["thermalAdvancedEnabled"] = settings.isThermalAdvancedEnabled();
+        doc["thermalWatchdogEnabled"] = settings.isThermalWatchdogEnabled();
+        doc["thermalWatchdogOwnsParams"] = settings.isThermalAdvancedEnabled() && settings.isThermalWatchdogEnabled();
+        doc["thermalWatchdogThreshold"] = settings.getThermalWatchdogThreshold();
+        doc["heaterWattage"] = settings.getHeaterWattage();
+        doc["incomingWaterTempC"] = settings.getIncomingWaterTempC();
+        doc["heatLossWatts"] = settings.getHeatLossWatts();
+        doc["heaterEfficiency"] = settings.getHeaterEfficiency();
+        doc["integralBandC"] = tune.integralBandC;
+        doc["integralMaxDutyPercent"] = tune.integralMaxDuty * 100.0f;
+        doc["approachBandC"] = tune.approachBandC;
+        doc["approachMaxDutyPercent"] = tune.approachMaxDuty * 100.0f;
+        doc["ffScale"] = tune.ffScale;
+        doc["brewHoldoffS"] = tune.brewHoldoffS;
+        doc["brewKpScale"] = tune.brewKpScale;
+        JsonObject status = doc["thermalWatchdogStatus"].to<JsonObject>();
+        status["shots"] = settings.getThermalWatchdogShots();
+        status["stableStreak"] = settings.getThermalWatchdogStableStreak();
+        status["lastSpread"] = settings.getThermalWatchdogLastSpread();
+        status["lastAction"] = settings.getThermalWatchdogLastAction();
+    }
     doc["pumpModelCoeffs"] = settings.getPumpModelCoeffs();
     doc["pumpSlipCoeffs"] = settings.getPumpSlipCoeffs();
     doc["wifiSsid"] = settings.getWifiSsid();
@@ -849,6 +926,7 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
     doc["mainBrightness"] = settings.getMainBrightness();
     doc["standbyBrightness"] = settings.getStandbyBrightness();
     doc["standbyBrightnessTimeout"] = settings.getStandbyBrightnessTimeout() / 1000;
+    doc["deepStandbyTimeout"] = settings.getDeepStandbyTimeout() / 1000;
     doc["steamPumpPercentage"] = settings.getSteamPumpPercentage();
     doc["steamPumpCutoff"] = settings.getSteamPumpCutoff();
     doc["themeMode"] = settings.getThemeMode();

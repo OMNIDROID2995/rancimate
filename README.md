@@ -11,6 +11,32 @@
 
 </p>
 
+> ## RANCIMATE
+>
+> A fork of GaggiMate with special additions and adjustments for the Rancilio Silvia.
+>
+> **RANCIMATE** is a personal fork of [GaggiMate](https://github.com/jniebuhr/gaggimate)
+> by jniebuhr and contributors, tuned for a Rancilio Silvia with a heavily insulated
+> boiler. It is not an official GaggiMate release and is not supported by the GaggiMate
+> project. Firmware versions are the upstream version plus `-rancimate`
+> (e.g. `v1.10.0-rancimate`); OTA updates come from the releases of this repository.
+>
+> Additions on top of GaggiMate:
+>
+> * **PID advanced for isolated boilers** (Settings → Machine): integral band and
+>   authority limit, heat-up power cap, configurable brew feedforward model, integral
+>   hold during and after a shot, fixed feedforward safety scaling.
+> * **Autotune Watchdog**: measures every shot before, during and after the draw and
+>   adapts the parameters above in small steps until the spread stays within a
+>   configurable threshold (default 2 °C).
+> * AMOLED standby screensaver and RANCIMATE branding.
+>
+> Display and controller must always be flashed together (protocol version 17).
+> Prebuilt binaries: [Releases](https://github.com/OMNIDROID2995/rancimate/releases) and [firmware/](firmware/).
+> Details: [custom/RANCIMATE.md](custom/RANCIMATE.md), concept: [custom/concept/](custom/concept/).
+> Licensed like GaggiMate under CC BY-NC-SA 4.0.
+
+
 This project upgrades a Gaggia espresso machine with smart controls to improve your coffee-making experience. By adding a display and custom electronics, you can monitor and control the machine more easily.
 
 <img src="docs/assets/gaggimate_poster.jpg" alt="Gaggia Classic Installation" width="500" />

@@ -8,6 +8,7 @@ import { Trans, useLingui } from '@lingui/react/macro';
 import { ApiServiceContext, machine } from '../../../services/ApiService.js';
 import Section from '../../../components/Card.jsx';
 import { HeaterCoordinationSection } from './HeaterCoordinationSection.jsx';
+import { ThermalAdvancedSection } from './ThermalAdvancedSection.jsx';
 import { Tooltip } from '../../../components/Tooltip.jsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCrosshairs } from '@fortawesome/free-solid-svg-icons/faCrosshairs';
@@ -297,6 +298,7 @@ export function MachineTab({ formData, onChange, setField, profiles = [] }) {
               </div>
             </fieldset>
           </details>
+          <ThermalAdvancedSection formData={formData} onChange={onChange} setField={setField} />
           <details className='border-base-content/10 border-t pt-4'>
             <summary className='cursor-pointer font-medium'>
               <Trans>Pump Parameters</Trans>

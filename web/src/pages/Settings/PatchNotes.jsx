@@ -8,7 +8,7 @@ import { Spinner } from '../../components/Spinner.jsx';
 import { Markdown } from '../../components/Markdown.jsx';
 import TabBar from '../../components/TabBar.jsx';
 
-const API = 'https://api.github.com/repos/jniebuhr/gaggimate';
+const API = 'https://api.github.com/repos/OMNIDROID2995/rancimate';
 
 // `git describe` strings look like v1.8.0-12-gabc1234[-dirty]; a plain tag has no -g part. The device
 // reports the latest version without its leading v (1.9.0), but the GitHub tag is v1.9.0.

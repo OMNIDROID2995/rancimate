@@ -21,6 +21,26 @@ using pid_result_callback_t = std::function<void(float Kp, float Ki, float Kd, f
 
 class HeaterCoordinator;
 
+// RANCIMATE: advanced control for heavily insulated boilers. Every field is
+// only honoured while `enabled` is true; disabled = exact upstream behaviour.
+// Values <= 0 mean "feature off" (or "keep controller default" for the
+// thermal model), so each building block can be measured on its own.
+struct ThermalShaping {
+    bool enabled = false;
+    float integralBandC = 0.0f;      // integrate only while error <= band (K)
+    float integralMaxDuty = 0.0f;    // cap on the integral contribution, 0..1
+    float approachBandC = 0.0f;      // taper the duty cap within this band below setpoint (K)
+    float approachMaxDuty = 1.0f;    // duty cap reached at setpoint, 0..1
+    float incomingWaterTempC = 0.0f; // feedforward model; <= 0 keeps 23 C
+    float heatLossWatts = 0.0f;      // <= 0 keeps 5 W
+    float heaterEfficiency = 0.0f;   // <= 0 keeps 0.95
+    float ffScale = 1.0f;            // multiplier on the disturbance feedforward
+    float brewHoldoffS = 0.0f;       // freeze I while brewing and this long after; 0 = off
+    float brewKpScale = 1.0f;        // P multiplier while brewing / in hold-off
+};
+
+enum class BrewThermalState : uint8_t { IDLE, BREWING, HOLDOFF };
+
 class Heater {
   public:
     Heater(TemperatureSensor *sensor, uint8_t heaterPin, const heater_error_callback_t &error_callback,
@@ -42,6 +62,8 @@ class Heater {
     // Thermal feedforward control
     void setThermalFeedforward(float *pumpFlowPtr = nullptr, float incomingWaterTemp = 23.0f, int *valveStatusPtr = nullptr);
     void setFeedforwardScale(float combinedKff); // Set combined Kff value (output units per watt)
+    void setThermalShaping(const ThermalShaping &shaping);
+    BrewThermalState getBrewThermalState() const { return brewState; }
 
   private:
     void setupPid();
@@ -54,6 +76,10 @@ class Heater {
     void plot(float optimumOutput, float outputScale, uint8_t everyNth);
     float calculateDisturbanceFeedforwardGain();
     float calculateSafetyScaling(float tempError);
+    bool isDrawing() const;
+    void updateBrewState(bool drawing);
+    float computeOutputCap(bool drawing) const;
+    void applyThermalModel();
     TemperatureSensor *sensor;
     uint8_t heaterPin;
     xTaskHandle taskHandle;
@@ -84,9 +110,17 @@ class Heater {
     int *valveStatus = nullptr;
     float lastSafetyFactor = 1.0f; // For smooth safety scaling transitions
     float incomingWaterTemp = 23.0f;
-    float heaterEfficiency = 0.95f; // 95% efficiency (immersion heater)
-    float heatLossWatts = 5.0f;     // 5W heat loss (well-insulated boiler)
-    float combinedKff = 0.0f;       // Combined feedforward gain (output units per watt) - disabled by default
+    float heaterEfficiency = 0.95f;       // 95% efficiency (immersion heater)
+    float heatLossWatts = 5.0f;           // 5W heat loss (well-insulated boiler)
+    float combinedKff = 0.0f;             // Combined feedforward gain (output units per watt) - disabled by default
+    float setupIncomingWaterTemp = 23.0f; // value from setThermalFeedforward, restored when shaping is off
+
+    // Advanced shaping state (RANCIMATE)
+    ThermalShaping shaping;
+    BrewThermalState brewState = BrewThermalState::IDLE;
+    unsigned long brewStateChanged = 0;
+    unsigned long lastDrawing = 0;
+    static constexpr unsigned long DRAW_END_DEBOUNCE_MS = 1500; // short valve/flow gaps stay one brew
 
     // Thermal model constants
     static constexpr float WATER_DENSITY = 1.0f;        // g/ml

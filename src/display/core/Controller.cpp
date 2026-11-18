@@ -23,6 +23,7 @@
 #include <display/plugins/ShotHistoryPlugin.h>
 #include <display/plugins/SmartDosePlugin.h>
 #include <display/plugins/SmartGrindPlugin.h>
+#include <display/plugins/ThermalWatchdogPlugin.h>
 #include <display/plugins/WebUIPlugin.h>
 #include <display/plugins/mahlkonig/MahlkonigPlugin.h>
 #include <display/util/FsUtil.h>
@@ -123,6 +124,7 @@ void Controller::setup() {
     pluginManager->registerPlugin(new LedControlPlugin());
     pluginManager->registerPlugin(new AutoWakeupPlugin());
     pluginManager->registerPlugin(new CleaningSchedulePlugin());
+    pluginManager->registerPlugin(new ThermalWatchdogPlugin()); // RANCIMATE: insulated-boiler watchdog
     pluginManager->registerPlugin(new SetupWizardPlugin());
     pluginManager->setup(this);
 
@@ -976,8 +978,29 @@ void Controller::setHeaterSettings() {
     parseFloatCsv(settings.getPid(), pid, 4, 0.0f);
     float steamPid[3];
     parseFloatCsv(settings.getSteamPid(), steamPid, 3, 0.0f);
-    comms.sendHeaterSettings(pid[0], pid[1], pid[2], pid[3], settings.isHeaterCoordinationEnabled(),
-                             static_cast<uint32_t>(settings.getHeaterHandoverMs()), steamPid[0], steamPid[1], steamPid[2]);
+    float kf = pid[3];
+    HeaterShapingCommand shaping;
+    if (settings.isThermalAdvancedEnabled()) {
+        // RANCIMATE: insulated-boiler shaping. Without a stored Kff the feedforward
+        // would stay off, so derive it from the persisted heater wattage (1000 / W).
+        if (kf <= 0.0f && settings.getHeaterWattage() > 0)
+            kf = 1000.0f / static_cast<float>(settings.getHeaterWattage());
+        const thermal::TuneParams tune = settings.getThermalTuneParams();
+        shaping.enabled = true;
+        shaping.integralBandC = tune.integralBandC;
+        shaping.integralMaxDuty = tune.integralMaxDuty;
+        shaping.approachBandC = tune.approachBandC;
+        shaping.approachMaxDuty = tune.approachMaxDuty;
+        shaping.incomingWaterTempC = settings.getIncomingWaterTempC();
+        shaping.heatLossWatts = settings.getHeatLossWatts();
+        shaping.heaterEfficiency = settings.getHeaterEfficiency();
+        shaping.ffScale = tune.ffScale;
+        shaping.brewHoldoffS = tune.brewHoldoffS;
+        shaping.brewKpScale = tune.brewKpScale;
+    }
+    comms.sendHeaterSettings(pid[0], pid[1], pid[2], kf, settings.isHeaterCoordinationEnabled(),
+                             static_cast<uint32_t>(settings.getHeaterHandoverMs()), steamPid[0], steamPid[1], steamPid[2],
+                             shaping);
 }
 
 int Controller::getTargetGrindDuration() const { return settings.getTargetGrindDuration(); }

@@ -79,7 +79,8 @@ void Heater::stop() {
 void Heater::setThermalFeedforward(float *pumpFlowPtr, float incomingWaterTemp, int *valveStatusPtr) {
     pumpFlowRate = pumpFlowPtr;
     valveStatus = valveStatusPtr;
-    this->incomingWaterTemp = incomingWaterTemp;
+    setupIncomingWaterTemp = incomingWaterTemp;
+    applyThermalModel(); // shaping (if enabled) keeps precedence over the setup literal
 
     ESP_LOGI(LOG_TAG, "Thermal feedforward setup - incoming water temp: %.1f°C, valve tracking: %s", incomingWaterTemp,
              valveStatusPtr ? "enabled" : "disabled");
@@ -92,6 +93,105 @@ void Heater::setFeedforwardScale(float combinedKff) {
     ESP_LOGI(LOG_TAG, "Combined feedforward gain (Kff) set to: %.3f output units per watt", combinedKff);
 }
 
+void Heater::setThermalShaping(const ThermalShaping &newShaping) {
+    shaping = newShaping;
+    if (!std::isfinite(shaping.ffScale) || shaping.ffScale <= 0.0f)
+        shaping.ffScale = 1.0f;
+    shaping.ffScale = std::min(shaping.ffScale, 3.0f);
+    if (!std::isfinite(shaping.brewKpScale) || shaping.brewKpScale <= 0.0f)
+        shaping.brewKpScale = 1.0f;
+    shaping.brewKpScale = std::min(shaping.brewKpScale, 2.0f);
+    if (!(shaping.approachMaxDuty > 0.0f) || shaping.approachMaxDuty > 1.0f)
+        shaping.approachMaxDuty = 1.0f;
+
+    if (shaping.enabled) {
+        simplePid->setIntegralBand(std::max(0.0f, shaping.integralBandC));
+        // 0 = unlimited; otherwise a share of TUNER_OUTPUT_SPAN. The lower bound
+        // stays open: a negative integral is how an over-temperature discharges.
+        simplePid->setIntegralOutputLimits(
+            -INFINITY, shaping.integralMaxDuty > 0.0f ? std::min(shaping.integralMaxDuty, 1.0f) * TUNER_OUTPUT_SPAN : 0.0f);
+    } else {
+        simplePid->setIntegralBand(0.0f);
+        simplePid->setIntegralOutputLimits(-INFINITY, INFINITY);
+        simplePid->setIntegrationFrozen(false);
+        simplePid->setProportionalScale(1.0f);
+        simplePid->setCtrlOutputLimits(0.0f, TUNER_OUTPUT_SPAN);
+        brewState = BrewThermalState::IDLE;
+    }
+    applyThermalModel();
+    ESP_LOGI(LOG_TAG,
+             "Thermal shaping %s: Iband=%.1fK Imax=%.0f%% approach=%.1fK/%.0f%% inlet=%.1fC loss=%.1fW eff=%.2f "
+             "ff=%.2f holdoff=%.0fs brewKp=%.2f",
+             shaping.enabled ? "ON" : "off", shaping.integralBandC, shaping.integralMaxDuty * 100.0f, shaping.approachBandC,
+             shaping.approachMaxDuty * 100.0f, incomingWaterTemp, heatLossWatts, heaterEfficiency, shaping.ffScale,
+             shaping.brewHoldoffS, shaping.brewKpScale);
+}
+
+void Heater::applyThermalModel() {
+    const bool on = shaping.enabled;
+    incomingWaterTemp = on && shaping.incomingWaterTempC > 0.0f ? shaping.incomingWaterTempC : setupIncomingWaterTemp;
+    heatLossWatts = on && shaping.heatLossWatts > 0.0f ? shaping.heatLossWatts : 5.0f;
+    heaterEfficiency =
+        on && shaping.heaterEfficiency > 0.0f && shaping.heaterEfficiency <= 1.0f ? shaping.heaterEfficiency : 0.95f;
+}
+
+// Same condition that gates the disturbance feedforward, so cap and feedforward never fight.
+bool Heater::isDrawing() const {
+    return pumpFlowRate != nullptr && *pumpFlowRate > 0.01f && valveStatus != nullptr && *valveStatus != 0;
+}
+
+// IDLE -> BREWING while water is drawn -> HOLDOFF for brewHoldoffS after the draw
+// ends -> IDLE. The sensor sees a brew ~L (22 s) late, mostly after the shot; while
+// BREWING/HOLDOFF the integral is frozen so it does not charge on a disturbance the
+// feedforward has already paid for.
+void Heater::updateBrewState(bool drawing) {
+    const unsigned long now = millis();
+    if (drawing)
+        lastDrawing = now;
+    if (!shaping.enabled || shaping.brewHoldoffS <= 0.0f) {
+        brewState = BrewThermalState::IDLE;
+        return;
+    }
+    switch (brewState) {
+    case BrewThermalState::IDLE:
+        if (drawing) {
+            brewState = BrewThermalState::BREWING;
+            brewStateChanged = now;
+        }
+        break;
+    case BrewThermalState::BREWING:
+        if (!drawing && now - lastDrawing > DRAW_END_DEBOUNCE_MS) {
+            brewState = BrewThermalState::HOLDOFF;
+            brewStateChanged = now;
+        }
+        break;
+    case BrewThermalState::HOLDOFF:
+        if (drawing) {
+            brewState = BrewThermalState::BREWING;
+            brewStateChanged = now;
+        } else if (now - brewStateChanged > static_cast<unsigned long>(shaping.brewHoldoffS * 1000.0f)) {
+            brewState = BrewThermalState::IDLE;
+            brewStateChanged = now;
+        }
+        break;
+    }
+}
+
+// Output ceiling: 100 % outside the approach band, tapering linearly down to
+// approachMaxDuty at setpoint and above. Never capped while water is drawn: the
+// temperature is then typically inside the band, but the feedforward needs ~57 %.
+float Heater::computeOutputCap(bool drawing) const {
+    if (!shaping.enabled || shaping.approachBandC <= 0.0f || shaping.approachMaxDuty >= 1.0f || drawing) {
+        return TUNER_OUTPUT_SPAN;
+    }
+    const float distance = setpoint - temperature;
+    if (distance >= shaping.approachBandC) {
+        return TUNER_OUTPUT_SPAN;
+    }
+    const float ratio = distance > 0.0f ? distance / shaping.approachBandC : 0.0f;
+    return (shaping.approachMaxDuty + (1.0f - shaping.approachMaxDuty) * ratio) * TUNER_OUTPUT_SPAN;
+}
+
 void Heater::autotune(int testTimeSec, int windowSize, int heaterWattage) {
     setupAutotune(testTimeSec, windowSize, heaterWattage);
     autotuning = true;
@@ -100,10 +200,12 @@ void Heater::autotune(int testTimeSec, int windowSize, int heaterWattage) {
 void Heater::loopPid() {
     softPwm(TUNER_OUTPUT_SPAN);
     temperature = sensor->read();
+    const bool drawing = isDrawing();
+    updateBrewState(drawing);
 
     // Calculate and set disturbance feedforward BEFORE PID update
     // Only apply thermal feedforward when Kf>0, valve is open, and water is flowing
-    if (combinedKff > 0.0f && pumpFlowRate && *pumpFlowRate > 0.01f && valveStatus && *valveStatus != 0) {
+    if (combinedKff > 0.0f && drawing) {
         float currentFlowRate = *pumpFlowRate; // Use raw flow rate for fast response
         float disturbanceGain = calculateDisturbanceFeedforwardGain();
 
@@ -117,12 +219,23 @@ void Heater::loopPid() {
         lastSafetyFactor = safetyFactor;
 
         disturbanceGain *= safetyFactor;
+        if (shaping.enabled)
+            disturbanceGain *= shaping.ffScale;
 
         // Set the disturbance feedforward in SimplePID
         simplePid->setDisturbanceFeedforward(currentFlowRate, disturbanceGain);
 
     } else {
         simplePid->setDisturbanceFeedforward(0.0f, 0.0f);
+    }
+
+    if (shaping.enabled) {
+        const bool brewing = brewState != BrewThermalState::IDLE;
+        simplePid->setIntegrationFrozen(brewing);
+        simplePid->setProportionalScale(brewing ? shaping.brewKpScale : 1.0f);
+        // Ceiling BEFORE update() so the existing anti-windup sees the real
+        // saturation limit; clamping `output` afterwards would cause windup.
+        simplePid->setCtrlOutputLimits(0.0f, computeOutputCap(drawing));
     }
 
     // Now run PID with proper feedforward integrated
@@ -275,6 +388,16 @@ float Heater::calculateDisturbanceFeedforwardGain() {
 
 float Heater::calculateSafetyScaling(float tempError) {
     // tempError = temperature - setpoint
+    if (shaping.enabled) {
+        // RANCIMATE fix: the upstream curve below jumps from 1.0 at exactly 0 K to
+        // 0.7 just below setpoint, so a shot started 0.3 K low only got ~80 % of
+        // its feedforward. Full FF at or below setpoint, linear back-off to 0 at +1 K.
+        if (tempError <= 0.0f)
+            return 1.0f;
+        if (tempError >= 1.0f)
+            return 0.0f;
+        return 1.0f - tempError;
+    }
     // Use smoother, less aggressive safety scaling to reduce oscillations
     if (tempError > 1.0f) {
         return 0.0f; // No FF if more than 1.0°C above setpoint

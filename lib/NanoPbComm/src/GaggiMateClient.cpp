@@ -150,7 +150,8 @@ gm::Payload GaggiMateClient::buildRelayControl(uint8_t index, bool open) {
 }
 
 gm::Payload GaggiMateClient::buildHeaterSettings(float kp, float ki, float kd, float kf, bool heaterCoordinationEnabled,
-                                                 uint32_t handoverMs, float steamKp, float steamKi, float steamKd) {
+                                                 uint32_t handoverMs, float steamKp, float steamKi, float steamKd,
+                                                 const HeaterShapingCommand &shaping) {
     gm::Payload p = gaggimate_Payload_init_zero;
     p.which_content = gaggimate_Payload_heater_tag;
     p.content.heater.kp = kp;
@@ -162,6 +163,17 @@ gm::Payload GaggiMateClient::buildHeaterSettings(float kp, float ki, float kd, f
     p.content.heater.steam_kp = steamKp;
     p.content.heater.steam_ki = steamKi;
     p.content.heater.steam_kd = steamKd;
+    p.content.heater.thermal_advanced = shaping.enabled;
+    p.content.heater.integral_band_c = shaping.integralBandC;
+    p.content.heater.integral_max_duty = shaping.integralMaxDuty;
+    p.content.heater.approach_band_c = shaping.approachBandC;
+    p.content.heater.approach_max_duty = shaping.approachMaxDuty;
+    p.content.heater.incoming_water_temp_c = shaping.incomingWaterTempC;
+    p.content.heater.heat_loss_watts = shaping.heatLossWatts;
+    p.content.heater.heater_efficiency = shaping.heaterEfficiency;
+    p.content.heater.ff_scale = shaping.ffScale;
+    p.content.heater.brew_holdoff_s = shaping.brewHoldoffS;
+    p.content.heater.brew_kp_scale = shaping.brewKpScale;
     return p;
 }
 
@@ -252,8 +264,10 @@ void GaggiMateClient::sendPumpControl(uint8_t index, PumpControlMode mode, float
 void GaggiMateClient::sendRelayControl(uint8_t index, bool open) { _endpoint.send(buildRelayControl(index, open)); }
 
 void GaggiMateClient::sendHeaterSettings(float kp, float ki, float kd, float kf, bool heaterCoordinationEnabled,
-                                         uint32_t handoverMs, float steamKp, float steamKi, float steamKd) {
-    _endpoint.send(buildHeaterSettings(kp, ki, kd, kf, heaterCoordinationEnabled, handoverMs, steamKp, steamKi, steamKd));
+                                         uint32_t handoverMs, float steamKp, float steamKi, float steamKd,
+                                         const HeaterShapingCommand &shaping) {
+    _endpoint.send(
+        buildHeaterSettings(kp, ki, kd, kf, heaterCoordinationEnabled, handoverMs, steamKp, steamKi, steamKd, shaping));
 }
 
 void GaggiMateClient::sendPumpSettings(float a, float b, float c, float d, float commutationGain, float convergenceGain,
